@@ -1,197 +1,212 @@
-# VTC Timetable Website - AI Coding Agent Guide
+# VTC Timetable - Copilot Instructions
 
-## Project Overview
+## Project Summary
 
-Next.js 16 (App Router) application for VTC (Vocational Training Council) students to view their timetables, track attendance, and export calendars. Uses Discord OAuth for authentication and MongoDB for persistence.
+This is a Next.js 16 (App Router) web app for VTC students.
+Primary capabilities:
 
-## Architecture & Data Flow
+- Sync timetable and attendance from VTC mobile API.
+- Store synced data in MongoDB.
+- Render timetable and attendance insights in the UI.
+- Support Discord OAuth and optional email/password login.
+- Export and subscribe to calendar feeds.
 
-### Core Data Flow: VTC API → MongoDB → UI
+Data flow is:
 
+```text
+VTC API -> Server Actions -> MongoDB -> Client UI
 ```
-VTC Mobile API (via vtc-api/ submodule)
-  → Server Actions (src/app/actions.ts)
-  → MongoDB Models (Event, Attendance, User)
-  → Client Components (React Big Calendar UI)
-```
 
-**Key Point**: Events and attendance are synced from VTC's mobile API and persisted in MongoDB. The UI displays stored data, NOT live API data.
+Important: UI reads persisted database data, not live API payloads.
 
-### Authentication Pattern
+## Clean Structure Snapshot
 
-- **Dual OAuth Strategy** via NextAuth v5 (Beta) - see [src/auth.ts](../src/auth.ts)
-     - **Discord OAuth** - Primary authentication method
-     - **Credentials Provider** - Email/password login with bcrypt hashing
-- `discordId` is the primary user identifier throughout the system
-- JWT tokens store `discordId` as `token.sub`
-- User model supports multiple auth providers via `authProvider: string[]` array
-
-### Database Schema (MongoDB + Mongoose)
-
-Three core models in `src/models/`:
-
-1. **Event** - Individual class sessions
-
-      - Foreign key: `vtcStudentId` (indexed)
-      - Unique compound index: `(vtc_id, vtcStudentId, semester)` - prevents duplicates
-      - Fields: `semester`, `status`, `courseCode`, `startTime`, `endTime`, `location`, `colorIndex`
-      - Status enum: `UPCOMING | FINISHED | CANCELED | RESCHEDULED | ABSENT`
-      - **vtc_id generation**: Composite ID from `courseCode-weekNum-startTime-endTime` (deterministic)
-
-2. **Attendance** - Per-course attendance statistics
-
-      - Tracks: `attendRate`, `totalClasses`, `conductedClasses`, `attended`, `late`, `absent`
-      - Contains `classes[]` array with individual class records (date, lessonTime, status)
-      - Status enum: `ACTIVE | FINISHED`
-
-3. **User** - Discord account mapping
-      - Links `discordId` to `vtcStudentId`
-      - Stores VTC API token (encrypted) and last sync timestamp
-
-**Connection Pattern**: Always use the cached connection from `lib/db.ts` - never create new connections. MongoDB connection is cached globally to survive Next.js hot reloads.
-
-## Critical Developer Workflows
-
-### Running the Application
+Use this command when reviewing the repo:
 
 ```bash
-npm run dev          # Development server (http://localhost:3000)
-npm run build        # Production build
-npm run start        # Production server
-npm run lint         # ESLint
+tree -I "node_modules|.git|.next|.dart_tool|build|data" -L 4 src vtc-api
 ```
 
-**Environment Variables** (`.env.local`):
+Notes:
 
-- `MONGODB_URI` - MongoDB connection string (required but currently commented out in db.ts)
-- `AUTH_SECRET` - NextAuth secret for JWT signing
-- `AUTH_DISCORD_ID` / `AUTH_DISCORD_SECRET` - Discord OAuth credentials
+- `data` is excluded on purpose to ignore `vtc-api/data` fixture files.
+- Keep focus on app code in `src` and API client code in `vtc-api/src`.
 
-### Syncing VTC Data
+## Current Project Tree (High Level)
 
-The sync flow in `src/app/actions.ts` (`syncVtcData` function):
-
-1. Extract VTC API token from URL (`mobile.vtc.edu.hk`)
-2. Fetch all months for specified semester (see `SEMESTER_MAP`)
-3. **"Check then insert"** logic - Query existing events, filter batch, use `insertMany({ ordered: false })`
-      - Never updates existing events - only inserts new ones
-      - Uses `insertMany()` for bulk efficiency, not `updateOne()` loops
-      - `ordered: false` continues inserting even if duplicates occur (race condition handling)
-4. Fetch attendance data with `bulkWrite()` for upserts
-
-**Semester Backfill Logic** (prevents missing past events):
-
-- Fall (SEM 1): Fetch Fall only
-- Spring (SEM 2): Fetch Spring (current year) + Fall (previous year)
-- Summer (SEM 3): Fetch Summer + Spring (current year)
-
-**Background Sync**: [BackgroundSync.tsx](../src/components/BackgroundSync.tsx) auto-syncs every 24h when user is logged in. Uses `checkAndSyncBackground()` server action.
-
-### Semester System
-
-```typescript
-SEMESTER_MAP = {
-  1: [9, 10, 11, 12],  // Sept-Dec
-  2: [1, 2, 3, 4],     // Jan-Apr
-  3: [5, 6, 7, 8]      // May-Aug (Summer)
-}
+```text
+src
+├── app
+│   ├── actions
+│   │   └── settings.ts
+│   ├── actions.ts
+│   ├── api
+│   │   ├── auth
+│   │   │   └── [...nextauth]
+│   │   └── calendar
+│   │       └── [discordId]
+│   ├── globals.css
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── settings
+│       └── page.tsx
+├── auth.ts
+├── components
+│   ├── AttendanceModal.tsx
+│   ├── BackgroundSync.tsx
+│   ├── CalendarHeader.tsx
+│   ├── CourseDetailsModal.tsx
+│   ├── EventDetailsModal.tsx
+│   ├── ExportSemesterButton.tsx
+│   ├── Providers.tsx
+│   ├── SemesterSummaryCard.tsx
+│   ├── Sidebar.tsx
+│   ├── SignInModal.tsx
+│   ├── SkippingCalculator.tsx
+│   ├── SubscribeButton.tsx
+│   ├── SyncModal.tsx
+│   ├── TimetableCalendar.tsx
+│   └── UserDropdown.tsx
+├── lib
+│   ├── attendance-logic.ts
+│   ├── colors.ts
+│   ├── db.ts
+│   ├── manual-attendance.ts
+│   └── utils.ts
+├── models
+│   ├── Attendance.ts
+│   ├── Event.ts
+│   └── User.ts
+└── types
+    ├── next-auth.d.ts
+    └── timetable.ts
+vtc-api
+├── bun.lock
+├── combined.json
+├── package.json
+└── src
+    ├── core
+    │   ├── api.ts
+    │   └── utils.ts
+    ├── index.ts
+    └── types
+        ├── combined.ts
+        ├── getClassAttendanceDetail.ts
+        ├── getClassAttendanceList.ts
+        ├── getMoodleTimetable.ts
+        ├── getTimeTableAndReminderList.ts
+        └── user.ts
 ```
 
-**Important**: As of February 2026, the current date is in Semester 2. When fetching data, loop through the semester's months and aggregate results.
+## Core Features
 
-## Project-Specific Conventions
+1. Authentication
+- NextAuth v5 with Discord provider.
+- Credentials login (email/password) with bcrypt hashing.
+- `discordId` is the canonical user identity.
 
-### Server Actions Pattern
+2. Timetable Sync
+- `syncVtcData` extracts token, validates token, fetches semester timetable, stores events.
+- Insert pattern is check-then-insert using `insertMany({ ordered: false })`.
+- Duplicate prevention uses deterministic composite `vtc_id`.
 
-All data operations are Server Actions in `src/app/actions.ts` marked with `"use server"`. Never use client-side API routes for database operations.
+3. Semester Logic and Backfill
+- Semester month mapping:
+  - SEM 1: Sep-Dec
+  - SEM 2: Jan-Apr
+  - SEM 3: May-Aug
+- Backfill rules prevent missing events across term boundaries.
 
-Key server actions:
+4. Attendance Sync and Aggregation
+- Attendance stored per course in `Attendance` model.
+- Hybrid stats combine API attendance + calendar totals + manual event adjustments.
 
-- `syncVtcData(vtcUrl, semesterNum)` - Main sync entry point (uses token + semester)
-- `autoSyncFromStoredToken()` - Auto-sync using stored token (no user input needed)
-- `getStoredEvents()` - Fetch events for current user (uses `vtcStudentId` from User)
-- `getHybridAttendanceStats()` - Merge VTC API + manual attendance + calendar totals
-- `toggleEventAttendance(vtc_id, status)` - Toggle ABSENT/UPCOMING status
-- `refreshAttendance()` - Re-fetch from VTC API using stored token
+5. Calendar UI
+- React Big Calendar with Month/Work Week/Day/Agenda views.
+- Deterministic course colors from `getColorIndex(courseCode)`.
+- Event status rendering includes upcoming, finished, canceled, absent.
 
-### Hybrid Attendance System
+6. Manual Attendance Actions
+- Toggle event attendance status (for manual override workflows).
+- Supports early-finish and status updates in server actions.
 
-**Critical Pattern**: Courses have THREE data sources merged into `HybridAttendanceStats`:
+7. Skipping Calculator
+- Estimates projected final attendance after skipping classes.
+- Surfaces safe-to-skip threshold against 80% target.
 
-1. **VTC API Attendance** - Official conducted/attended counts from `Attendance` model
-2. **Calendar Events** - Total scheduled classes (past + future) from `Event` model
-3. **Manual Attendance** - User overrides via `toggleEventAttendance()` (stored in Event.status)
+8. Calendar Export and Subscription
+- Export semester events to `.ics`.
+- Calendar subscription endpoint at `/api/calendar/[discordId]`.
+- Endpoint is intentionally unauthenticated for calendar app compatibility.
 
-The `getHybridAttendanceStats()` function:
+9. Settings Management
+- Read account settings and linked auth providers.
+- Set/update email and password.
 
-- Uses **minute-based calculations** for accuracy (not just class counts)
-- Calculates `currentAttendanceRate` (conducted only) vs `maxPossibleRate` (if attend all future)
-- Includes `safeToSkipMinutes` - how many minutes can be skipped while staying ≥80%
-- Recovery status: `"safe" | "recoverable" | "failed" | "grace"` (grace = early semester)
+10. Background Sync
+- Periodic sync checks for logged-in users.
+- Throttling logic prevents excessive API calls.
 
-### Color Assignment
+## Architecture and Conventions
 
-Course colors are **deterministic** - generated from course code hash via `getColorIndex()` in `lib/colors.ts`. Uses 10 pastel colors. Never assign colors randomly.
+1. Server Actions First
+- All data operations are in `src/app/actions.ts` with `"use server"`.
+- Do not add redundant client-side API routes for DB operations.
 
-### Calendar Export (WebCal)
+2. Database Access
+- Always use cached `connectDB()` from `src/lib/db.ts`.
+- Never create ad-hoc MongoDB connections.
 
-API Route: `/api/calendar/[discordId]`
+3. Identity Mapping
+- Map `discordId` to `vtcStudentId` via `User` model.
+- Event/attendance queries should be scoped by `vtcStudentId`.
 
-**Security Note**: Intentionally unauthenticated - calendar apps can't do OAuth. The `discordId` acts as a secret token. Anyone with the URL can access the user's events (standard WebCal trade-off).
+4. Date/Time Handling
+- VTC date strings can be `DD/MM/YYYY`; normalize before storage.
+- VTC timestamps are Unix seconds.
 
-Example: `webcal://localhost:3000/api/calendar/{discordId}?semester=SEM+2`
+5. Bulk Insert Behavior
+- Keep insert-only sync semantics for timetable events.
+- Do not replace with per-row update loops unless explicitly required.
 
-### Date Handling
+6. Attendance Accuracy
+- Prefer minute-based attendance calculations for projections.
+- Use hybrid attendance helpers rather than raw counters in isolation.
 
-- VTC API returns dates as `DD/MM/YYYY` strings
-- Always normalize with `normalizeToISODate()` to `YYYY-MM-DD` before storage
-- Timestamps in VTC API are Unix seconds (not milliseconds)
-- Use `dayjs` for date manipulation (already installed)
+## Main Files You Should Read First
 
-## Integration Points
+- `src/app/actions.ts`
+- `src/auth.ts`
+- `src/models/Event.ts`
+- `src/models/Attendance.ts`
+- `src/models/User.ts`
+- `src/lib/attendance-logic.ts`
+- `src/components/TimetableCalendar.tsx`
+- `src/app/api/calendar/[discordId]/route.ts`
+- `vtc-api/src/core/api.ts`
 
-### VTC API (vtc-api/ subdirectory)
+## Typical Local Commands
 
-TypeScript API client in `vtc-api/src/core/api.ts`:
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+```
 
-- `getTimeTableAndReminderList(month, year)` - Fetch timetable events
-- `getClassAttendanceList()` - Fetch all course attendance
-- `getClassAttendanceDetail(courseCode)` - Detailed class-by-class attendance
-- `checkAccessToken()` - Validate VTC token
+## Environment Variables
 
-**Base URL**: `https://mobile.vtc.edu.hk/api?cmd={command}&token={token}`
+Create `.env.local` with at least:
 
-All endpoints return: `{ isSuccess, errorCode, errorMsg, payload }`
-
-### React Big Calendar
-
-UI component: [TimetableCalendar.tsx](../src/components/TimetableCalendar.tsx)
-
-- View modes: Month, Week, Work Week, Day, Agenda
-- Custom event styling based on `colorIndex` and `status`
-- Double-click opens [EventDetailsModal.tsx](../src/components/EventDetailsModal.tsx)
-
-### ICS Export
-
-Button component: [ExportSemesterButton.tsx](../src/components/ExportSemesterButton.tsx)
-
-Uses `ics` library to generate `.ics` files from stored events. Downloads directly to browser.
+- `MONGODB_URI`
+- `AUTH_SECRET`
+- `AUTH_DISCORD_ID`
+- `AUTH_DISCORD_SECRET`
 
 ## Common Pitfalls
 
-1. **Don't create new MongoDB connections** - Always use `connectDB()` from `lib/db.ts`
-2. **Semester filtering** - Always check which semester events belong to (stored in `Event.semester` field)
-3. **Manual vs API attendance** - Use `getHybridAttendanceStats()`, not raw `Attendance` model
-4. **NextAuth v5 beta** - Uses new `auth()` function instead of `getServerSession()`
-5. **Date formats** - VTC API uses `DD/MM/YYYY`, always normalize to ISO format
-6. **Token extraction** - Extract from URL search params, not path
-7. **Bulk inserts** - Use `insertMany()` with `ordered: false`, not loops with `findOneAndUpdate()`
-8. **Foreign keys** - Query by `vtcStudentId`, not `discordId` (use User model to map)
-
-## Key Files Reference
-
-- [src/app/actions.ts](../src/app/actions.ts) - All server actions (1658 lines, most important file)
-- [src/auth.ts](../src/auth.ts) - NextAuth configuration with Discord provider
-- [src/lib/attendance-logic.ts](../src/lib/attendance-logic.ts) - Skipping calculator, duration parsing
-- [src/models/](../src/models/) - Mongoose schemas (Event, Attendance, User)
-- [vtc-api/src/core/api.ts](../vtc-api/src/core/api.ts) - VTC API client wrapper
+1. Querying by `discordId` directly in event/attendance models instead of `vtcStudentId`.
+2. Forgetting semester filters when rendering or exporting data.
+3. Mixing raw attendance stats with manual overrides without hybrid merge.
+4. Misreading VTC timestamp units (seconds vs milliseconds).
+5. Breaking insert-only sync behavior by introducing update-heavy logic.
