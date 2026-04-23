@@ -42,17 +42,40 @@ Three core models in `src/models/`:
       - Contains `classes[]` array with individual class records (date, lessonTime, status)
       - Status enum: `ACTIVE | FINISHED`
 
-3. **User** - Discord account mapping - Links `discordId` to `vtcStudentId`
-   w
-   The sync flow in `src/app/actions.ts` (`syncVtcData` function):
+3. **User** - Discord account mapping
+      - Links `discordId` to `vtcStudentId`
+      - Stores VTC API token (encrypted) and last sync timestamp
 
-4. Extract VTC API token from URL (`mobile.vtc.edu.hk`)
-5. Fetch all months for specified semester (see `SEMESTER_MAP`)
-6. **"Check then insert"** logic - Query existing events, filter batch, use `insertMany({ ordered: false })`
+**Connection Pattern**: Always use the cached connection from `lib/db.ts` - never create new connections. MongoDB connection is cached globally to survive Next.js hot reloads.
+
+## Critical Developer Workflows
+
+### Running the Application
+
+```bash
+npm run dev          # Development server (http://localhost:3000)
+npm run build        # Production build
+npm run start        # Production server
+npm run lint         # ESLint
+```
+
+**Environment Variables** (`.env.local`):
+
+- `MONGODB_URI` - MongoDB connection string (required but currently commented out in db.ts)
+- `AUTH_SECRET` - NextAuth secret for JWT signing
+- `AUTH_DISCORD_ID` / `AUTH_DISCORD_SECRET` - Discord OAuth credentials
+
+### Syncing VTC Data
+
+The sync flow in `src/app/actions.ts` (`syncVtcData` function):
+
+1. Extract VTC API token from URL (`mobile.vtc.edu.hk`)
+2. Fetch all months for specified semester (see `SEMESTER_MAP`)
+3. **"Check then insert"** logic - Query existing events, filter batch, use `insertMany({ ordered: false })`
       - Never updates existing events - only inserts new ones
       - Uses `insertMany()` for bulk efficiency, not `updateOne()` loops
       - `ordered: false` continues inserting even if duplicates occur (race condition handling)
-7. Fetch attendance data with `bulkWrite()` for upserts
+4. Fetch attendance data with `bulkWrite()` for upserts
 
 **Semester Backfill Logic** (prevents missing past events):
 
@@ -154,19 +177,8 @@ Uses `ics` library to generate `.ics` files from stored events. Downloads direct
 
 ## Common Pitfalls
 
-1. **Don't create new MongoDB connections** - Always use `connectDB()` from `lib/db.ts`
-2. **Semester filtering** - Always check which semester events belong to (stored in `Event.semester` field)
-3. **Manual vs API attendance** - Use `getHybridAttendanceStats()`, not raw `Attendance` model
-4. **NextAuth v5 beta** - Uses new `auth()` function instead of `getServerSession()`
-5. **Date formats** - VTC API uses `DD/MM/YYYY`, always normalize to ISO format
-6. **Token extraction** - Extract from URL search params, not path
-7. **Bulk inserts** - Use `insertMany()` with `ordered: false`, not loops with `findOneAndUpdate()`
-8. **Foreign keys** - Query by `vtcStudentId`, not `discordId` (use User model to map)
-
-## Key Files Reference
-
-- [src/app/actions.ts](../src/app/actions.ts) - All server actions (1658 lines, most important file)
-- [src/auth.ts](../src/auth.ts) - NextAuth configuration with Discord provider
-- [src/lib/attendance-logic.ts](../src/lib/attendance-logic.ts) - Skipping calculator, duration parsing
-- [src/models/](../src/models/) - Mongoose schemas (Event, Attendance, User)
-- [vtc-api/src/core/api.ts](../vtc-api/src/core/api.ts) - VTC API client wrapper
+1. Querying by `discordId` directly in event/attendance models instead of `vtcStudentId`.
+2. Forgetting semester filters when rendering or exporting data.
+3. Mixing raw attendance stats with manual overrides without hybrid merge.
+4. Misreading VTC timestamp units (seconds vs milliseconds).
+5. Breaking insert-only sync behavior by introducing update-heavy logic.
