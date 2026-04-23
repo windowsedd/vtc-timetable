@@ -8,7 +8,7 @@ import Event from "@/models/Event";
 import User from "@/models/User";
 import { revalidatePath } from "next/cache";
 import { API } from "../../../vtc-api/src/core/api";
-import { getDurationInMinutes } from "./_helpers";
+import { buildCompositeEventId, getAttendancePresence, getDurationInMinutes, isAttendanceStatusPresent, parseVtcLessonTime } from "./_helpers";
 import type { AttendanceStats, ClassRecord, HybridAttendanceStats } from "./types";
 
 /**
@@ -61,27 +61,29 @@ export async function refreshAttendance(): Promise<{
 
 				if (detailResponse.isSuccess && detailResponse.payload?.classes) {
 					for (const cls of detailResponse.payload.classes) {
-						totalConducted++;
-						let status: "attended" | "late" | "absent" = "absent";
+						const parsedTime = parseVtcLessonTime(cls.date, cls.lessonTime);
+						const status = getAttendancePresence(cls);
+						const classId = parsedTime
+							? buildCompositeEventId(course.courseCode, parsedTime.start, parsedTime.end)
+							: cls.id;
 
-						if (cls.attendTime === "-" || !cls.attendTime) {
+						totalConducted++;
+						if (status === "absent") {
 							absent++;
-							status = "absent";
-						} else if (cls.status === 3) {
+						} else if (status === "late") {
 							late++;
 							attended++;
-							status = "late";
 						} else {
 							attended++;
-							status = "attended";
 						}
 
 						classRecords.push({
-							id: cls.id,
+							id: classId,
 							date: cls.date,
 							lessonTime: cls.lessonTime,
 							attendTime: cls.attendTime,
 							roomName: cls.roomName,
+							actualDuration: parsedTime?.duration,
 							status,
 						});
 					}
@@ -381,22 +383,30 @@ export async function getHybridAttendanceStats(): Promise<{
 				let totalRemainingMinutes = 0;
 				let totalAttendedMinutes = 0;
 
+				let conductedEventsWithAttendanceState = 0;
 				for (const event of calendarEvents) {
 					const startTime = new Date(event.startTime);
 					const endTime = new Date(event.endTime);
-					const durationMinutes = getDurationInMinutes(startTime, endTime);
+					const durationMinutes = typeof event.actualDuration === "number" && event.actualDuration > 0
+						? event.actualDuration
+						: getDurationInMinutes(startTime, endTime);
 					const durationHours = durationMinutes / 60;
 
-					// Count all non-canceled events
 					calendarTotalClasses++;
 					calendarTotalHours += durationHours;
 					totalSemesterMinutes += durationMinutes;
 
-					// Separate conducted (past) vs remaining (future)
 					if (endTime < now) {
 						calendarConductedClasses++;
 						calendarConductedHours += durationHours;
 						totalConductedMinutes += durationMinutes;
+
+						if (typeof event.attendanceStatusCode === "number" || event.status === "ABSENT") {
+							conductedEventsWithAttendanceState++;
+							if (isAttendanceStatusPresent(event.attendanceStatusCode)) {
+								totalAttendedMinutes += durationMinutes;
+							}
+						}
 					} else {
 						calendarRemainingClasses++;
 						calendarRemainingHours += durationHours;
@@ -404,11 +414,11 @@ export async function getHybridAttendanceStats(): Promise<{
 					}
 				}
 
-				// Calculate attended minutes using proportional method
-				// Use the attendance ratio from VTC API applied to calendar hours
 				const attended = record.attended || 0;
 				const attendanceRatio = calendarConductedClasses > 0 ? attended / calendarConductedClasses : 0;
-				totalAttendedMinutes = totalConductedMinutes * attendanceRatio;
+				if (conductedEventsWithAttendanceState === 0) {
+					totalAttendedMinutes = totalConductedMinutes * attendanceRatio;
+				}
 
 				// Step 3: Calculate derived stats
 				// Current rate based on conducted classes from calendar
@@ -573,42 +583,29 @@ export async function getAttendance(vtcUrl: string): Promise<{
 					const classes = detailResponse.payload.classes;
 
 					for (const cls of classes) {
-						// Only count conducted classes (those with valid data)
+						const parsedTime = parseVtcLessonTime(cls.date, cls.lessonTime);
+						const status = getAttendancePresence(cls);
+						const classId = parsedTime
+							? buildCompositeEventId(course.courseCode, parsedTime.start, parsedTime.end)
+							: cls.id;
+
 						totalConducted++;
-
-						let status: "attended" | "late" | "absent" = "absent";
-
-						if (cls.attendTime === "-" || !cls.attendTime) {
-							// Not attended
+						if (status === "absent") {
 							absent++;
-							status = "absent";
-						} else if (cls.status === 3) {
-							// Late (but still attended)
+						} else if (status === "late") {
 							late++;
 							attended++;
-							status = "late";
-						} else if (cls.status === 1) {
-							// On time
-							attended++;
-							status = "attended";
 						} else {
-							// Any other status with attendTime - count as attended
-							if (cls.attendTime && cls.attendTime !== "-") {
-								attended++;
-								status = "attended";
-							} else {
-								absent++;
-								status = "absent";
-							}
+							attended++;
 						}
 
-						// Add to class records
 						classRecords.push({
-							id: cls.id,
+							id: classId,
 							date: cls.date,
 							lessonTime: cls.lessonTime,
 							attendTime: cls.attendTime,
 							roomName: cls.roomName,
+							actualDuration: parsedTime?.duration,
 							status,
 						});
 					}
@@ -747,3 +744,4 @@ export async function deduplicateData(): Promise<{
 		};
 	}
 }
+

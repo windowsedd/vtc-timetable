@@ -6,19 +6,22 @@ export type SemesterType = "SEM 1" | "SEM 2" | "SEM 3";
 // Status type
 export type EventStatusType = "UPCOMING" | "FINISHED" | "CANCELED" | "RESCHEDULED" | "ABSENT";
 
-// Interface for the Event document
-
-// Interface for the Event document
 export interface IEvent extends Document {
-    vtcStudentId: string; // Foreign key - VTC student ID
-    semester: SemesterType; // Semester category
-    status: EventStatusType; // Event status
+    vtcStudentId: string;
+    semester: SemesterType;
+    status: EventStatusType;
     vtc_id: string;
     courseCode: string;
     courseTitle: string;
     lessonType: string;
     startTime: Date;
     endTime: Date;
+    scheduledStartTime?: Date;
+    scheduledEndTime?: Date;
+    scheduledDuration?: number;
+    actualDuration?: number;
+    isTimeAdjusted: boolean;
+    attendanceStatusCode?: number | null;
     location: string;
     lecturerName: string;
     colorIndex: number;
@@ -26,7 +29,6 @@ export interface IEvent extends Document {
     updatedAt: Date;
 }
 
-// Schema definition
 const EventSchema = new Schema<IEvent>(
     {
         vtcStudentId: {
@@ -72,6 +74,26 @@ const EventSchema = new Schema<IEvent>(
             type: Date,
             required: true,
         },
+        scheduledStartTime: {
+            type: Date,
+        },
+        scheduledEndTime: {
+            type: Date,
+        },
+        scheduledDuration: {
+            type: Number,
+        },
+        actualDuration: {
+            type: Number,
+        },
+        isTimeAdjusted: {
+            type: Boolean,
+            default: false,
+        },
+        attendanceStatusCode: {
+            type: Number,
+            default: null,
+        },
         location: {
             type: String,
             default: "",
@@ -86,14 +108,12 @@ const EventSchema = new Schema<IEvent>(
         },
     },
     {
-        timestamps: true, // Adds createdAt and updatedAt
+        timestamps: true,
     }
 );
 
-// Unique compound index - ensures no duplicate events per student/semester
 EventSchema.index({ vtc_id: 1, vtcStudentId: 1, semester: 1 }, { unique: true });
 
-// Prevent model overwrite in development (hot reload)
 const Event: Model<IEvent> =
     mongoose.models.Event || mongoose.model<IEvent>("Event", EventSchema);
 

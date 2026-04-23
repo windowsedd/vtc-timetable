@@ -10,15 +10,116 @@ import User from "@/models/User";
 import { TimetableEvent } from "@/types/timetable";
 import { revalidatePath } from "next/cache";
 import { API } from "../../../vtc-api/src/core/api";
-import {
-	extractToken,
-	SEMESTER_CATEGORY_MAP,
-	SEMESTER_END_DATES,
-	SEMESTER_MAP,
-	SEMESTER_ORDER_MAP,
-} from "./_helpers";
+import { buildCompositeEventId, extractToken, getAttendancePresence, getDurationInMinutes, parseVtcLessonTime, SEMESTER_CATEGORY_MAP, SEMESTER_END_DATES, SEMESTER_MAP, SEMESTER_ORDER_MAP } from "./_helpers";
 import type { VtcApiResponse } from "./types";
 
+
+type UpsertAttendanceEventInput = {
+    cls: {
+        date: string;
+        lessonTime: string;
+        roomName?: string;
+        status?: number | null;
+        attendTime?: string | null;
+    };
+    vtcStudentId: string;
+    semester: "SEM 1" | "SEM 2" | "SEM 3";
+    courseCode: string;
+    courseTitle: string;
+    colorIndex: number;
+    fallbackLocation?: string;
+};
+
+function resolveEventStatusFromAttendance(attendanceStatus: "attended" | "late" | "absent", endTime: Date, now: Date) {
+    if (attendanceStatus === "absent") {
+        return "ABSENT" as const;
+    }
+
+    return endTime < now ? "FINISHED" as const : "UPCOMING" as const;
+}
+
+async function upsertAttendanceAdjustedEvent({
+    cls,
+    vtcStudentId,
+    semester,
+    courseCode,
+    courseTitle,
+    colorIndex,
+    fallbackLocation = "",
+}: UpsertAttendanceEventInput) {
+    const parsedTime = parseVtcLessonTime(cls.date, cls.lessonTime);
+    if (!parsedTime) {
+        return null;
+    }
+
+    const actualStart = new Date(parsedTime.start * 1000);
+    const actualEnd = new Date(parsedTime.end * 1000);
+    const attendanceStatus = getAttendancePresence(cls);
+    const nextVtcId = buildCompositeEventId(courseCode, parsedTime.start, parsedTime.end);
+    const dayStart = new Date(`${parsedTime.isoDate}T00:00:00+08:00`);
+    const dayEnd = new Date(`${parsedTime.isoDate}T23:59:59+08:00`);
+
+    const sameDayEvents = await Event.find({
+        vtcStudentId,
+        semester,
+        courseCode,
+        startTime: { $gte: dayStart, $lte: dayEnd },
+    }).sort({ startTime: 1 });
+
+    const matchingEvent = sameDayEvents.find((eventDoc) => eventDoc.vtc_id === nextVtcId) ?? sameDayEvents.reduce<typeof sameDayEvents[number] | null>((closest, candidate) => {
+        if (!closest) {
+            return candidate;
+        }
+
+        const candidateDelta = Math.abs(new Date(candidate.startTime).getTime() - actualStart.getTime()) + Math.abs(new Date(candidate.endTime).getTime() - actualEnd.getTime());
+        const closestDelta = Math.abs(new Date(closest.startTime).getTime() - actualStart.getTime()) + Math.abs(new Date(closest.endTime).getTime() - actualEnd.getTime());
+        return candidateDelta < closestDelta ? candidate : closest;
+    }, null);
+
+    const scheduledStart = matchingEvent?.scheduledStartTime ?? matchingEvent?.startTime ?? actualStart;
+    const scheduledEnd = matchingEvent?.scheduledEndTime ?? matchingEvent?.endTime ?? actualEnd;
+    const scheduledDuration = matchingEvent?.scheduledDuration ?? getDurationInMinutes(new Date(scheduledStart), new Date(scheduledEnd));
+    const isTimeAdjusted = Math.abs(new Date(scheduledStart).getTime() - actualStart.getTime()) > 60000 || Math.abs(new Date(scheduledEnd).getTime() - actualEnd.getTime()) > 60000;
+
+    const update = {
+        vtc_id: nextVtcId,
+        vtcStudentId,
+        semester,
+        status: resolveEventStatusFromAttendance(attendanceStatus, actualEnd, new Date()),
+        courseCode,
+        courseTitle,
+        startTime: actualStart,
+        endTime: actualEnd,
+        scheduledStartTime: scheduledStart,
+        scheduledEndTime: scheduledEnd,
+        scheduledDuration,
+        actualDuration: parsedTime.duration,
+        isTimeAdjusted,
+        attendanceStatusCode: cls.status ?? null,
+        location: cls.roomName?.trim() || matchingEvent?.location || fallbackLocation,
+        colorIndex,
+    };
+
+    if (matchingEvent) {
+        return Event.findOneAndUpdate(
+            { _id: matchingEvent._id },
+            { $set: update },
+            { new: true }
+        );
+    }
+
+    return Event.findOneAndUpdate(
+        { vtc_id: nextVtcId, vtcStudentId, semester },
+        {
+            $set: update,
+            $setOnInsert: {
+                lessonType: "",
+                lecturerName: "",
+            },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+}
 /**
  * Main sync function that handles authentication and data persistence
  * This is the primary entry point for syncing VTC data
@@ -111,7 +212,7 @@ export async function syncVtcData(
 						})
 						.map((event: TimetableEvent) => {
 							// Generate deterministic composite ID
-							const compositeId = `${event.courseCode}-${event.weekNum}-${event.startTime}-${event.endTime}`;
+							const compositeId = `${event.courseCode}-${event.startTime}-${event.endTime}`;
 							return {
 								...event,
 								compositeId, // Add composite ID to event object
@@ -141,19 +242,27 @@ export async function syncVtcData(
 
 					// Step 6: Prepare documents for insertMany
 					const documentsToInsert = newEvents.map((event: any) => {
+						const eventStartTime = new Date(event.startTime * 1000);
 						const eventEndTime = new Date(event.endTime * 1000);
+						const scheduledDuration = getDurationInMinutes(eventStartTime, eventEndTime);
 						const calculatedStatus: "FINISHED" | "UPCOMING" = eventEndTime < now ? "FINISHED" : "UPCOMING";
 
 						return {
-							vtc_id: event.compositeId, // Use composite ID instead of API UUID
+							vtc_id: event.compositeId,
 							vtcStudentId: vtcStudentId,
 							semester: semCategory,
 							status: calculatedStatus,
 							courseCode: event.courseCode,
 							courseTitle: event.courseTitle,
 							lessonType: event.lessonType || "",
-							startTime: new Date(event.startTime * 1000),
+							startTime: eventStartTime,
 							endTime: eventEndTime,
+							scheduledStartTime: eventStartTime,
+							scheduledEndTime: eventEndTime,
+							scheduledDuration,
+							actualDuration: scheduledDuration,
+							isTimeAdjusted: false,
+							attendanceStatusCode: null,
 							location: `${event.campusCode || ""}-${event.roomNum || ""}`.replace(/^-|-$/g, ""),
 							lecturerName: event.lecturerName || "",
 							colorIndex: getColorIndex(event.courseCode),
@@ -235,9 +344,7 @@ export async function syncVtcData(
 
 			const attendanceOps = await Promise.all(
 				courses.map(async (course) => {
-					// Get semester from Calendar events, fallback to primary semester
 					const courseSemester = (courseToSemesterMap[course.courseCode] || fallbackSemester) as "SEM 1" | "SEM 2" | "SEM 3";
-
 					const detailResponse = await api.getClassAttendanceDetail(course.courseCode);
 
 					let attended = 0;
@@ -248,28 +355,40 @@ export async function syncVtcData(
 
 					if (detailResponse.isSuccess && detailResponse.payload?.classes) {
 						for (const cls of detailResponse.payload.classes) {
-							totalConducted++;
-							let status: "attended" | "late" | "absent" = "absent";
+							const parsedTime = parseVtcLessonTime(cls.date, cls.lessonTime);
+							const classId = parsedTime
+								? buildCompositeEventId(course.courseCode, parsedTime.start, parsedTime.end)
+								: cls.id;
+							const status = getAttendancePresence(cls);
 
-							if (cls.attendTime === "-" || !cls.attendTime) {
+							totalConducted++;
+							if (status === "absent") {
 								absent++;
-								status = "absent";
-							} else if (cls.status === 3) {
+							} else if (status === "late") {
 								late++;
 								attended++;
-								status = "late";
 							} else {
 								attended++;
-								status = "attended";
 							}
 
 							classRecords.push({
-								id: cls.id,
+								id: classId,
 								date: cls.date,
 								lessonTime: cls.lessonTime,
 								attendTime: cls.attendTime,
 								roomName: cls.roomName,
+								actualDuration: parsedTime?.duration,
 								status,
+							});
+
+							await upsertAttendanceAdjustedEvent({
+								cls,
+								vtcStudentId,
+								semester: courseSemester,
+								courseCode: course.courseCode,
+								courseTitle: course.name?.en || course.courseCode,
+								colorIndex: getColorIndex(course.courseCode),
+								fallbackLocation: cls.roomName,
 							});
 						}
 					}
@@ -278,14 +397,10 @@ export async function syncVtcData(
 					const attendRate = totalConducted > 0 ? (attended / totalConducted) * 100 : 0;
 					const isFollowUp = /A$/.test(course.courseCode);
 					const baseCourseCode = isFollowUp ? course.courseCode.slice(0, -1) : course.courseCode;
-
-					// Determine attendance status (ACTIVE or FINISHED)
 					const semesterEnd = SEMESTER_END_DATES[courseSemester];
 					const semesterEndDate = new Date(currentYear, semesterEnd.month - 1, semesterEnd.day, 23, 59, 59);
 					const isPastSemesterEnd = now > semesterEndDate;
 					const meetsClassThreshold = totalConducted > 10;
-
-					// Status is FINISHED only if both conditions are met
 					const attendanceStatus: "ACTIVE" | "FINISHED" = isPastSemesterEnd && meetsClassThreshold ? "FINISHED" : "ACTIVE";
 
 					return {
@@ -426,7 +541,8 @@ export async function shouldAutoSync(): Promise<{
 }
 
 /**
- * Sync timetable from VTC API and store in MongoDB
+ * Legacy timetable sync entry point.
+ * Delegate to syncVtcData so Event writes always include the required schema fields.
  */
 export async function syncTimetable(
 	vtcUrl: string,
@@ -437,96 +553,14 @@ export async function syncTimetable(
 	updatedCount?: number;
 	error?: string;
 }> {
-	try {
-		const token = extractToken(vtcUrl);
-		if (!token) {
-			return { success: false, error: "Invalid URL. No token found." };
-		}
+	const result = await syncVtcData(vtcUrl, semesterNum);
 
-		const months = SEMESTER_MAP[semesterNum];
-		if (!months) {
-			return {
-				success: false,
-				error: "Invalid semester number. Use 1 (Fall), 2 (Spring), or 3 (Summer).",
-			};
-		}
-
-		await connectDB();
-
-		const api = new API({ token });
-		const currentYear = new Date().getFullYear();
-		const lectureList: TimetableEvent[] = [];
-
-		// Fetch all months for the semester
-		for (const month of months) {
-			let effectiveYear = currentYear;
-
-			if (semesterNum === 1 && [9, 10, 11, 12].includes(month)) {
-				effectiveYear = currentYear - 1;
-			}
-
-			console.log(`Fetching Semester ${semesterNum}: Month ${month}, Year ${effectiveYear}`);
-
-			try {
-				const response = (await api.getTimeTableAndReminderList(month, effectiveYear)) as VtcApiResponse;
-
-				if (!response.isSuccess) {
-					console.warn(`API error for month ${month}:`, response.errorMsg);
-					continue;
-				}
-
-				const rawList = response.payload?.timetable?.add || [];
-				lectureList.push(...rawList);
-			} catch (err) {
-				console.error(`Error processing month ${month}:`, err instanceof Error ? err.message : err);
-			}
-		}
-
-		if (lectureList.length === 0) {
-			return {
-				success: false,
-				error: "No timetable events found for the selected semester.",
-			};
-		}
-
-		// Upsert all events to MongoDB
-		let newCount = 0;
-		let updatedCount = 0;
-
-		for (const event of lectureList) {
-			const result = await Event.findOneAndUpdate(
-				{ vtc_id: event.id },
-				{
-					vtc_id: event.id,
-					courseCode: event.courseCode,
-					courseTitle: event.courseTitle,
-					lessonType: event.lessonType,
-					startTime: new Date(event.startTime * 1000),
-					endTime: new Date(event.endTime * 1000),
-					location: `${event.campusCode} ${event.roomNum}`.trim(),
-					lecturerName: event.lecturerName,
-					colorIndex: getColorIndex(event.courseCode),
-				},
-				{ upsert: true, new: true, setDefaultsOnInsert: true },
-			);
-
-			if (result.createdAt.getTime() === result.updatedAt.getTime()) {
-				newCount++;
-			} else {
-				updatedCount++;
-			}
-		}
-
-		revalidatePath("/");
-
-		return { success: true, newCount, updatedCount };
-	} catch (error) {
-		console.error("Error syncing timetable:", error);
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : "Failed to sync timetable",
-		};
-	}
+	return {
+		success: result.success,
+		newCount: result.newEvents,
+		updatedCount: 0,
+		error: result.error,
+	};
 }
 
 /**
@@ -618,3 +652,8 @@ export async function fetchTimetable(token: string, semesterNum: number = getCur
 		};
 	}
 }
+
+
+
+
+

@@ -7,8 +7,8 @@ export interface TimetableEvent {
   roomNum: string;
   weekNum: string;
   lecturerName: string;
-  startTime: number;      // Unix timestamp (seconds)
-  endTime: number;        // Unix timestamp (seconds)
+  startTime: number;
+  endTime: number;
 }
 
 export type SemesterType = "SEM 1" | "SEM 2" | "SEM 3";
@@ -28,7 +28,10 @@ export interface CalendarEvent {
     semester?: SemesterType;
     status?: EventStatusType;
     vtc_id?: string;
-    // Moodle deadline fields
+    actualDuration?: number;
+    scheduledDuration?: number;
+    isAdjusted?: boolean;
+    attendanceStatusCode?: number | null;
     eventType?: "class" | "deadline";
     actionUrl?: string;
     courseUrl?: string;

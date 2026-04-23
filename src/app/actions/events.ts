@@ -46,6 +46,10 @@ export async function getStoredEvents(): Promise<{
 				semester: event.semester,
 				status: event.status,
 				vtc_id: event.vtc_id,
+				actualDuration: event.actualDuration,
+				scheduledDuration: event.scheduledDuration,
+				isAdjusted: Boolean(event.isTimeAdjusted),
+				attendanceStatusCode: event.attendanceStatusCode ?? null,
 			},
 		}));
 

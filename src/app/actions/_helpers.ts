@@ -1,75 +1,109 @@
-/**
+﻿/**
  * Internal helpers shared across action modules.
- * NOT exported from the barrel — these are implementation details.
+ * Not exported from the barrel; these are implementation details.
  */
 
-// Semester to months mapping
 export const SEMESTER_MAP: Record<number, number[]> = {
-	1: [9, 10, 11, 12], // Sept-Dec
-	2: [1, 2, 3, 4], // Jan-Apr
-	3: [5, 6, 7, 8], // May-Aug (Summer)
+    1: [9, 10, 11, 12],
+    2: [1, 2, 3, 4],
+    3: [5, 6, 7, 8],
 };
 
-// Semester category mapping
 export const SEMESTER_CATEGORY_MAP: Record<number, "SEM 1" | "SEM 2" | "SEM 3"> = {
-	1: "SEM 1", // Fall
-	2: "SEM 2", // Spring
-	3: "SEM 3", // Summer
+    1: "SEM 1",
+    2: "SEM 2",
+    3: "SEM 3",
 };
 
-// Semester end dates for ACTIVE/FINISHED detection
 export const SEMESTER_END_DATES: Record<string, { month: number; day: number }> = {
-	"SEM 1": { month: 12, day: 31 }, // December 31st
-	"SEM 2": { month: 5, day: 31 }, // May 31st
-	"SEM 3": { month: 8, day: 31 }, // August 31st
+    "SEM 1": { month: 12, day: 31 },
+    "SEM 2": { month: 5, day: 31 },
+    "SEM 3": { month: 8, day: 31 },
 };
 
-// Semester ordering for comparison
 export const SEMESTER_ORDER_MAP: Record<string, number> = {
-	"SEM 1": 1,
-	"SEM 2": 2,
-	"SEM 3": 3,
+    "SEM 1": 1,
+    "SEM 2": 2,
+    "SEM 3": 3,
 };
 
-/**
- * Extract token from VTC URL
- */
+export type AttendancePresence = "attended" | "late" | "absent";
+
 export function extractToken(vtcUrl: string): string | null {
-	try {
-		const url = new URL(vtcUrl);
-		return url.searchParams.get("token");
-	} catch {
-		return null;
-	}
+    try {
+        const url = new URL(vtcUrl);
+        return url.searchParams.get("token");
+    } catch {
+        return null;
+    }
 }
 
-/**
- * Calculate duration in minutes between two dates
- */
 export function getDurationInMinutes(start: Date, end: Date): number {
-	return (new Date(end).getTime() - new Date(start).getTime()) / 1000 / 60;
+    return (new Date(end).getTime() - new Date(start).getTime()) / 1000 / 60;
 }
 
-/**
- * Normalize a date string to ISO format (YYYY-MM-DD)
- * Handles DD/MM/YYYY (VTC API format) and YYYY-MM-DD (ISO format)
- */
 export function normalizeToISODate(dateStr: string): string {
-	if (!dateStr) return "";
-	// Check if already in ISO format (YYYY-MM-DD)
-	if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-		return dateStr.split("T")[0]; // Remove time portion if present
-	}
-	// Handle DD/MM/YYYY format (VTC API)
-	const parts = dateStr.split("/");
-	if (parts.length === 3) {
-		const [day, month, year] = parts;
-		return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-	}
-	// Handle D/M/YYYY format (VTC API with single digits)
-	if (dateStr.includes("/")) {
-		const [day, month, year] = dateStr.split("/");
-		return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-	}
-	return dateStr;
+    if (!dateStr) return "";
+
+    const pureDate = dateStr.trim().split(" ")[0];
+
+    if (/^\d{4}-\d{2}-\d{2}/.test(pureDate)) {
+        return pureDate.split("T")[0];
+    }
+
+    if (pureDate.includes("/")) {
+        const [day, month, year] = pureDate.split("/");
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+
+    return pureDate;
+}
+
+export function parseVtcLessonTime(
+    dateStr: string,
+    timeRange: string
+): { start: number; end: number; duration: number; isoDate: string } | null {
+    const isoDate = normalizeToISODate(dateStr);
+    const [startStr, endStr] = timeRange.split("-").map((part) => part.trim());
+
+    if (!isoDate || !startStr || !endStr) {
+        return null;
+    }
+
+    const start = Math.floor(new Date(`${isoDate}T${startStr}:00+08:00`).getTime() / 1000);
+    const end = Math.floor(new Date(`${isoDate}T${endStr}:00+08:00`).getTime() / 1000);
+
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+        return null;
+    }
+
+    return {
+        start,
+        end,
+        duration: (end - start) / 60,
+        isoDate,
+    };
+}
+
+export function buildCompositeEventId(courseCode: string, startTimestamp: number, endTimestamp: number): string {
+    return `${courseCode}-${Math.floor(startTimestamp)}-${Math.floor(endTimestamp)}`;
+}
+
+export function getAttendancePresence(cls: {
+    status?: number | null;
+    attendTime?: string | null;
+}): AttendancePresence {
+    if (!cls.attendTime || cls.attendTime === "-") {
+        return "absent";
+    }
+
+    if (cls.status === 3) {
+        return "late";
+    }
+
+    return "attended";
+}
+
+export function isAttendanceStatusPresent(statusCode?: number | null): boolean {
+    return statusCode === 1 || statusCode === 3;
 }

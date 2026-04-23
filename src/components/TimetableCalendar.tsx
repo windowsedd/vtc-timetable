@@ -190,6 +190,11 @@ export default function TimetableCalendar({
                                             <span className="opacity-70"> ({event.resource.courseCode})</span>
                                         )}
                                     </div>
+                                    {event.resource?.isAdjusted && (
+                                        <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/75">
+                                            [Adjusted]
+                                        </div>
+                                    )}
                                     {event.resource?.location && (
                                         <div className="text-[10px] opacity-80 mt-0.5">
                                             📍 {event.resource.location}
@@ -209,6 +214,10 @@ export default function TimetableCalendar({
         </div>
     );
 }
+
+
+
+
 
 
 

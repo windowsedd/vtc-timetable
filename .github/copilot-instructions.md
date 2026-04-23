@@ -35,7 +35,7 @@ Three core models in `src/models/`:
       - Unique compound index: `(vtc_id, vtcStudentId, semester)` - prevents duplicates
       - Fields: `semester`, `status`, `courseCode`, `startTime`, `endTime`, `location`, `colorIndex`
       - Status enum: `UPCOMING | FINISHED | CANCELED | RESCHEDULED | ABSENT`
-      - **vtc_id generation**: Composite ID from `courseCode-weekNum-startTime-endTime` (deterministic)
+      - **vtc_id generation**: Composite ID from `courseCode-startTime-endTime` (deterministic)
 
 2. **Attendance** - Per-course attendance statistics
       - Tracks: `attendRate`, `totalClasses`, `conductedClasses`, `attended`, `late`, `absent`

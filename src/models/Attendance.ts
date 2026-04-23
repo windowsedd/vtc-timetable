@@ -13,14 +13,15 @@ export interface IClassRecord {
     lessonTime: string;
     attendTime: string;
     roomName: string;
+    actualDuration?: number;
     status: "attended" | "late" | "absent";
 }
 
 // Interface for the Attendance document
 export interface IAttendance extends Document {
-    vtcStudentId: string; // Foreign key - VTC student ID
-    semester: SemesterType; // Semester category
-    status: AttendanceStatusType; // Attendance status (ACTIVE/FINISHED)
+    vtcStudentId: string;
+    semester: SemesterType;
+    status: AttendanceStatusType;
     courseCode: string;
     courseName: string;
     attendRate: number;
@@ -37,7 +38,6 @@ export interface IAttendance extends Document {
     updatedAt: Date;
 }
 
-// Schema definition
 const AttendanceSchema = new Schema<IAttendance>(
     {
         vtcStudentId: {
@@ -109,6 +109,7 @@ const AttendanceSchema = new Schema<IAttendance>(
                 lessonTime: String,
                 attendTime: String,
                 roomName: String,
+                actualDuration: Number,
                 status: {
                     type: String,
                     enum: ["attended", "late", "absent"],
@@ -121,10 +122,8 @@ const AttendanceSchema = new Schema<IAttendance>(
     }
 );
 
-// Unique compound index - one attendance record per course per student per semester
 AttendanceSchema.index({ courseCode: 1, vtcStudentId: 1, semester: 1 }, { unique: true });
 
-// Prevent model overwrite in development (hot reload)
 const Attendance: Model<IAttendance> =
     mongoose.models.Attendance ||
     mongoose.model<IAttendance>("Attendance", AttendanceSchema);
