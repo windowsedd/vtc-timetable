@@ -31,7 +31,6 @@ VTC Mobile API (via vtc-api/ submodule)
 Three core models in `src/models/`:
 
 1. **Event** - Individual class sessions
-
       - Foreign key: `vtcStudentId` (indexed)
       - Unique compound index: `(vtc_id, vtcStudentId, semester)` - prevents duplicates
       - Fields: `semester`, `status`, `courseCode`, `startTime`, `endTime`, `location`, `colorIndex`
@@ -39,45 +38,21 @@ Three core models in `src/models/`:
       - **vtc_id generation**: Composite ID from `courseCode-weekNum-startTime-endTime` (deterministic)
 
 2. **Attendance** - Per-course attendance statistics
-
       - Tracks: `attendRate`, `totalClasses`, `conductedClasses`, `attended`, `late`, `absent`
       - Contains `classes[]` array with individual class records (date, lessonTime, status)
       - Status enum: `ACTIVE | FINISHED`
 
-3. **User** - Discord account mapping
-      - Links `discordId` to `vtcStudentId`
-      - Stores VTC API token (encrypted) and last sync timestamp
+3. **User** - Discord account mapping - Links `discordId` to `vtcStudentId`
+   w
+   The sync flow in `src/app/actions.ts` (`syncVtcData` function):
 
-**Connection Pattern**: Always use the cached connection from `lib/db.ts` - never create new connections. MongoDB connection is cached globally to survive Next.js hot reloads.
-
-## Critical Developer Workflows
-
-### Running the Application
-
-```bash
-npm run dev          # Development server (http://localhost:3000)
-npm run build        # Production build
-npm run start        # Production server
-npm run lint         # ESLint
-```
-
-**Environment Variables** (`.env.local`):
-
-- `MONGODB_URI` - MongoDB connection string (required but currently commented out in db.ts)
-- `AUTH_SECRET` - NextAuth secret for JWT signing
-- `AUTH_DISCORD_ID` / `AUTH_DISCORD_SECRET` - Discord OAuth credentials
-
-### Syncing VTC Data
-
-The sync flow in `src/app/actions.ts` (`syncVtcData` function):
-
-1. Extract VTC API token from URL (`mobile.vtc.edu.hk`)
-2. Fetch all months for specified semester (see `SEMESTER_MAP`)
-3. **"Check then insert"** logic - Query existing events, filter batch, use `insertMany({ ordered: false })`
+4. Extract VTC API token from URL (`mobile.vtc.edu.hk`)
+5. Fetch all months for specified semester (see `SEMESTER_MAP`)
+6. **"Check then insert"** logic - Query existing events, filter batch, use `insertMany({ ordered: false })`
       - Never updates existing events - only inserts new ones
       - Uses `insertMany()` for bulk efficiency, not `updateOne()` loops
       - `ordered: false` continues inserting even if duplicates occur (race condition handling)
-4. Fetch attendance data with `bulkWrite()` for upserts
+7. Fetch attendance data with `bulkWrite()` for upserts
 
 **Semester Backfill Logic** (prevents missing past events):
 

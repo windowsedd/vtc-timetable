@@ -1,0 +1,620 @@
+"use server";
+
+import { auth } from "@/auth";
+import { getColorIndex } from "@/lib/colors";
+import connectDB from "@/lib/db";
+import { getCurrentSemester } from "@/lib/utils";
+import Attendance, { IClassRecord } from "@/models/Attendance";
+import Event from "@/models/Event";
+import User from "@/models/User";
+import { TimetableEvent } from "@/types/timetable";
+import { revalidatePath } from "next/cache";
+import { API } from "../../../vtc-api/src/core/api";
+import {
+	extractToken,
+	SEMESTER_CATEGORY_MAP,
+	SEMESTER_END_DATES,
+	SEMESTER_MAP,
+	SEMESTER_ORDER_MAP,
+} from "./_helpers";
+import type { VtcApiResponse } from "./types";
+
+/**
+ * Main sync function that handles authentication and data persistence
+ * This is the primary entry point for syncing VTC data
+ */
+export async function syncVtcData(
+	vtcUrl: string,
+	semesterNum: number = getCurrentSemester(),
+): Promise<{
+	success: boolean;
+	error?: string;
+	vtcStudentId?: string;
+	newEvents?: number;
+	newAttendance?: number;
+}> {
+	try {
+		// Step 1: Auth Check
+		const session = await auth();
+		if (!session?.user?.discordId) {
+			return { success: false, error: "Please sign in with Discord first." };
+		}
+		const discordId = session.user.discordId;
+
+		// Step 2: Token Check
+		let token: string | null = null;
+		if (vtcUrl.startsWith("http")) {
+			token = extractToken(vtcUrl);
+		} else {
+			token = vtcUrl; // Direct token pass
+		}
+
+		if (!token) {
+			return { success: false, error: "Invalid VTC URL or token." };
+		}
+
+		const api = new API({ token });
+
+		// Step 3: ID Extraction - Call VTC API to verify token & get student ID
+		const userResponse = await api.checkAccessToken();
+		if (!userResponse.isSuccess) {
+			return { success: false, error: "Invalid VTC token. Please get a new URL from VTC app." };
+		}
+
+		const vtcStudentId = userResponse.payload.vtcID;
+
+		// Step 4: Save token and vtcStudentId to User
+		await connectDB();
+		await User.findOneAndUpdate({ discordId }, { vtcToken: token, vtcStudentId, lastSync: new Date() }, { upsert: true });
+
+		// Step 5: Determine semester category
+		const primarySemester = SEMESTER_CATEGORY_MAP[semesterNum];
+		if (!primarySemester) {
+			return {
+				success: false,
+				error: "Invalid semester number. Use 1 (Fall), 2 (Spring), or 3 (Summer).",
+			};
+		}
+
+		const currentYear = new Date().getFullYear();
+		const now = new Date();
+		let newEventsCount = 0;
+
+		// Helper function to fetch and save timetable for a specific semester/year
+		// Uses "check then insert" logic - only inserts new events, never updates existing ones
+		const fetchSemesterTimetable = async (semNum: number, semCategory: "SEM 1" | "SEM 2" | "SEM 3", yearOverride?: number): Promise<number> => {
+			const months = SEMESTER_MAP[semNum];
+			if (!months) return 0;
+
+			let count = 0;
+
+			for (const month of months) {
+				// Determine year: use override if provided, otherwise calculate based on semester
+				const year = yearOverride ?? currentYear;
+				// For Fall semester (Sept-Dec), use the provided year
+				// For Spring/Summer, use current year unless overridden
+
+				const response = await api.getTimeTableAndReminderList(month, year);
+
+				if (response.isSuccess && response.payload?.timetable?.add) {
+					const events = response.payload.timetable.add;
+
+					// Step 1: Generate composite IDs and collect valid events
+					const validEvents = events
+						.filter((event: TimetableEvent) => {
+							// Check for required fields
+							if (!event.courseCode || !event.weekNum || !event.startTime || !event.endTime) {
+								console.warn("Skipping event with missing required fields", event);
+								return false;
+							}
+							return true;
+						})
+						.map((event: TimetableEvent) => {
+							// Generate deterministic composite ID
+							const compositeId = `${event.courseCode}-${event.weekNum}-${event.startTime}-${event.endTime}`;
+							return {
+								...event,
+								compositeId, // Add composite ID to event object
+							};
+						});
+
+					if (validEvents.length === 0) continue;
+
+					// Step 2: Extract composite IDs from this batch
+					const batchVtcIds = validEvents.map((event: any) => event.compositeId);
+
+					// Step 3: Query MongoDB for existing events with these vtc_ids (scoped to vtcStudentId)
+					const existingEvents = await Event.find({
+						vtc_id: { $in: batchVtcIds },
+						vtcStudentId: vtcStudentId,
+					})
+						.select("vtc_id")
+						.lean();
+
+					// Step 4: Create a Set of existing vtc_ids for efficient lookup
+					const existingVtcIds = new Set(existingEvents.map((e) => e.vtc_id));
+
+					// Step 5: Filter to only new events that don't exist in DB
+					const newEvents = validEvents.filter((event: any) => !existingVtcIds.has(event.compositeId));
+
+					if (newEvents.length === 0) continue;
+
+					// Step 6: Prepare documents for insertMany
+					const documentsToInsert = newEvents.map((event: any) => {
+						const eventEndTime = new Date(event.endTime * 1000);
+						const calculatedStatus: "FINISHED" | "UPCOMING" = eventEndTime < now ? "FINISHED" : "UPCOMING";
+
+						return {
+							vtc_id: event.compositeId, // Use composite ID instead of API UUID
+							vtcStudentId: vtcStudentId,
+							semester: semCategory,
+							status: calculatedStatus,
+							courseCode: event.courseCode,
+							courseTitle: event.courseTitle,
+							lessonType: event.lessonType || "",
+							startTime: new Date(event.startTime * 1000),
+							endTime: eventEndTime,
+							location: `${event.campusCode || ""}-${event.roomNum || ""}`.replace(/^-|-$/g, ""),
+							lecturerName: event.lecturerName || "",
+							colorIndex: getColorIndex(event.courseCode),
+						};
+					});
+
+					// Step 7: Insert only new events using insertMany
+					// Use ordered: false to continue inserting even if some fail (e.g., race condition duplicates)
+					try {
+						const result = await Event.insertMany(documentsToInsert, { ordered: false });
+						count += result.length;
+					} catch (insertError: any) {
+						// Handle duplicate key errors gracefully (in case of race conditions)
+						if (insertError.code === 11000 && insertError.insertedDocs) {
+							// Some documents were inserted before the duplicate error
+							count += insertError.insertedDocs.length;
+						} else if (insertError.code !== 11000) {
+							// Re-throw non-duplicate errors
+							throw insertError;
+						}
+						// For pure duplicate errors with no insertedDocs, count stays the same
+					}
+				}
+			}
+
+			return count;
+		};
+
+		// Step 6: Fetch timetables with backfill logic
+		// Semester 1 (Fall): Just fetch Fall
+		// Semester 2 (Spring): Fetch Spring (current year) + Fall (previous year)
+		// Semester 3 (Summer): Fetch Summer (current year) + Spring (current year)
+
+		const fetchPromises: Promise<number>[] = [];
+
+		switch (semesterNum) {
+			case 1: // Fall - no backfill
+				fetchPromises.push(fetchSemesterTimetable(1, "SEM 1", currentYear));
+				break;
+
+			case 2: // Spring - also fetch Fall from previous year
+				fetchPromises.push(
+					fetchSemesterTimetable(2, "SEM 2", currentYear), // Primary: Spring current year
+					fetchSemesterTimetable(1, "SEM 1", currentYear - 1), // Backfill: Fall previous year
+				);
+				break;
+
+			case 3: // Summer - also fetch Spring from current year
+				fetchPromises.push(
+					fetchSemesterTimetable(3, "SEM 3", currentYear), // Primary: Summer current year
+					fetchSemesterTimetable(2, "SEM 2", currentYear), // Backfill: Spring current year
+				);
+				break;
+		}
+
+		// Execute all fetches in parallel
+		const results = await Promise.all(fetchPromises);
+		newEventsCount = results.reduce((sum, count) => sum + count, 0);
+
+		// Use the primary semester as fallback for attendance tagging
+		const fallbackSemester = primarySemester;
+
+		// Step 6: Fetch and save Attendance with both IDs
+		// First, build a map of courseCode -> semester from Calendar events
+		const courseToSemesterMap: Record<string, string> = {};
+		const existingEventsAll = await Event.find({ vtcStudentId }).select("courseCode semester").lean();
+		for (const event of existingEventsAll) {
+			// Use the most recent semester for each course (in case of duplicates)
+			if (!courseToSemesterMap[event.courseCode] || (SEMESTER_ORDER_MAP[event.semester] || 0) > (SEMESTER_ORDER_MAP[courseToSemesterMap[event.courseCode]] || 0)) {
+				courseToSemesterMap[event.courseCode] = event.semester;
+			}
+		}
+
+		const listResponse = await api.getClassAttendanceList();
+		let newAttendanceCount = 0;
+
+		if (listResponse.isSuccess && listResponse.payload?.courses) {
+			const courses = listResponse.payload.courses;
+
+			const attendanceOps = await Promise.all(
+				courses.map(async (course) => {
+					// Get semester from Calendar events, fallback to primary semester
+					const courseSemester = (courseToSemesterMap[course.courseCode] || fallbackSemester) as "SEM 1" | "SEM 2" | "SEM 3";
+
+					const detailResponse = await api.getClassAttendanceDetail(course.courseCode);
+
+					let attended = 0;
+					let late = 0;
+					let absent = 0;
+					let totalConducted = 0;
+					const classRecords: IClassRecord[] = [];
+
+					if (detailResponse.isSuccess && detailResponse.payload?.classes) {
+						for (const cls of detailResponse.payload.classes) {
+							totalConducted++;
+							let status: "attended" | "late" | "absent" = "absent";
+
+							if (cls.attendTime === "-" || !cls.attendTime) {
+								absent++;
+								status = "absent";
+							} else if (cls.status === 3) {
+								late++;
+								attended++;
+								status = "late";
+							} else {
+								attended++;
+								status = "attended";
+							}
+
+							classRecords.push({
+								id: cls.id,
+								date: cls.date,
+								lessonTime: cls.lessonTime,
+								attendTime: cls.attendTime,
+								roomName: cls.roomName,
+								status,
+							});
+						}
+					}
+
+					const totalScheduled = detailResponse.payload?.totalNumOfClass || 0;
+					const attendRate = totalConducted > 0 ? (attended / totalConducted) * 100 : 0;
+					const isFollowUp = /A$/.test(course.courseCode);
+					const baseCourseCode = isFollowUp ? course.courseCode.slice(0, -1) : course.courseCode;
+
+					// Determine attendance status (ACTIVE or FINISHED)
+					const semesterEnd = SEMESTER_END_DATES[courseSemester];
+					const semesterEndDate = new Date(currentYear, semesterEnd.month - 1, semesterEnd.day, 23, 59, 59);
+					const isPastSemesterEnd = now > semesterEndDate;
+					const meetsClassThreshold = totalConducted > 10;
+
+					// Status is FINISHED only if both conditions are met
+					const attendanceStatus: "ACTIVE" | "FINISHED" = isPastSemesterEnd && meetsClassThreshold ? "FINISHED" : "ACTIVE";
+
+					return {
+						updateOne: {
+							filter: { courseCode: course.courseCode, vtcStudentId, semester: courseSemester },
+							update: {
+								$set: {
+									vtcStudentId,
+									semester: courseSemester,
+									status: attendanceStatus,
+									courseCode: course.courseCode,
+									courseName: course.name?.en || course.courseCode,
+									attendRate: Math.round(attendRate * 10) / 10,
+									totalClasses: totalScheduled,
+									conductedClasses: totalConducted,
+									attended,
+									late,
+									absent,
+									isFinished: totalScheduled > 0 && totalConducted >= totalScheduled,
+									isFollowUp,
+									baseCourseCode,
+									classes: classRecords,
+								},
+							},
+							upsert: true,
+						},
+					};
+				}),
+			);
+
+			if (attendanceOps.length > 0) {
+				const result = await Attendance.bulkWrite(attendanceOps);
+				newAttendanceCount = result.upsertedCount;
+			}
+		}
+
+		revalidatePath("/");
+		return {
+			success: true,
+			vtcStudentId,
+			newEvents: newEventsCount,
+			newAttendance: newAttendanceCount,
+		};
+	} catch (error) {
+		console.error("Error syncing VTC data:", error);
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Failed to sync VTC data",
+		};
+	}
+}
+
+/**
+ * Auto-sync from stored token
+ * Uses the stored VTC token from User database to sync data
+ * Automatically detects semester based on current date
+ */
+export async function autoSyncFromStoredToken(): Promise<{
+	success: boolean;
+	error?: string;
+	vtcStudentId?: string;
+	newEvents?: number;
+	newAttendance?: number;
+}> {
+	try {
+		// Step 1: Auth Check
+		const session = await auth();
+		if (!session?.user?.discordId) {
+			return { success: false, error: "Please sign in first." };
+		}
+
+		await connectDB();
+		const discordId = session.user.discordId;
+
+		// Step 2: Get stored token from User
+		const user = await User.findOne({ discordId }).lean();
+		if (!user?.vtcToken) {
+			return { success: false, error: "No stored VTC token found. Please sync manually first." };
+		}
+
+		// Step 3: Detect current semester dynamically
+		const semesterNum = getCurrentSemester();
+
+		// Step 4: Call syncVtcData with stored token
+		return await syncVtcData(user.vtcToken, semesterNum);
+	} catch (error) {
+		console.error("Error auto-syncing VTC data:", error);
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Failed to auto-sync VTC data",
+		};
+	}
+}
+
+/**
+ * Check if auto-sync should run based on last sync time
+ * Returns true if last sync was more than 15 minutes ago or never synced
+ */
+export async function shouldAutoSync(): Promise<{
+	should: boolean;
+	lastSync?: Date;
+	minutesSinceLastSync?: number;
+}> {
+	try {
+		const session = await auth();
+		if (!session?.user?.discordId) {
+			return { should: false };
+		}
+
+		await connectDB();
+		const user = await User.findOne({ discordId: session.user.discordId }).lean();
+
+		if (!user?.vtcToken) {
+			return { should: false }; // No token, can't auto-sync
+		}
+
+		if (!user.lastSync) {
+			return { should: true }; // Never synced before
+		}
+
+		const now = new Date();
+		const lastSync = new Date(user.lastSync);
+		const minutesSinceLastSync = (now.getTime() - lastSync.getTime()) / 1000 / 60;
+
+		// Throttle: only sync if last sync was more than 15 minutes ago
+		const THROTTLE_MINUTES = 15;
+		const should = minutesSinceLastSync > THROTTLE_MINUTES;
+
+		return {
+			should,
+			lastSync,
+			minutesSinceLastSync: Math.floor(minutesSinceLastSync),
+		};
+	} catch (error) {
+		console.error("Error checking auto-sync:", error);
+		return { should: false };
+	}
+}
+
+/**
+ * Sync timetable from VTC API and store in MongoDB
+ */
+export async function syncTimetable(
+	vtcUrl: string,
+	semesterNum: number = getCurrentSemester(),
+): Promise<{
+	success: boolean;
+	newCount?: number;
+	updatedCount?: number;
+	error?: string;
+}> {
+	try {
+		const token = extractToken(vtcUrl);
+		if (!token) {
+			return { success: false, error: "Invalid URL. No token found." };
+		}
+
+		const months = SEMESTER_MAP[semesterNum];
+		if (!months) {
+			return {
+				success: false,
+				error: "Invalid semester number. Use 1 (Fall), 2 (Spring), or 3 (Summer).",
+			};
+		}
+
+		await connectDB();
+
+		const api = new API({ token });
+		const currentYear = new Date().getFullYear();
+		const lectureList: TimetableEvent[] = [];
+
+		// Fetch all months for the semester
+		for (const month of months) {
+			let effectiveYear = currentYear;
+
+			if (semesterNum === 1 && [9, 10, 11, 12].includes(month)) {
+				effectiveYear = currentYear - 1;
+			}
+
+			console.log(`Fetching Semester ${semesterNum}: Month ${month}, Year ${effectiveYear}`);
+
+			try {
+				const response = (await api.getTimeTableAndReminderList(month, effectiveYear)) as VtcApiResponse;
+
+				if (!response.isSuccess) {
+					console.warn(`API error for month ${month}:`, response.errorMsg);
+					continue;
+				}
+
+				const rawList = response.payload?.timetable?.add || [];
+				lectureList.push(...rawList);
+			} catch (err) {
+				console.error(`Error processing month ${month}:`, err instanceof Error ? err.message : err);
+			}
+		}
+
+		if (lectureList.length === 0) {
+			return {
+				success: false,
+				error: "No timetable events found for the selected semester.",
+			};
+		}
+
+		// Upsert all events to MongoDB
+		let newCount = 0;
+		let updatedCount = 0;
+
+		for (const event of lectureList) {
+			const result = await Event.findOneAndUpdate(
+				{ vtc_id: event.id },
+				{
+					vtc_id: event.id,
+					courseCode: event.courseCode,
+					courseTitle: event.courseTitle,
+					lessonType: event.lessonType,
+					startTime: new Date(event.startTime * 1000),
+					endTime: new Date(event.endTime * 1000),
+					location: `${event.campusCode} ${event.roomNum}`.trim(),
+					lecturerName: event.lecturerName,
+					colorIndex: getColorIndex(event.courseCode),
+				},
+				{ upsert: true, new: true, setDefaultsOnInsert: true },
+			);
+
+			if (result.createdAt.getTime() === result.updatedAt.getTime()) {
+				newCount++;
+			} else {
+				updatedCount++;
+			}
+		}
+
+		revalidatePath("/");
+
+		return { success: true, newCount, updatedCount };
+	} catch (error) {
+		console.error("Error syncing timetable:", error);
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Failed to sync timetable",
+		};
+	}
+}
+
+/**
+ * Check if a background sync is needed (more than 24h since last sync)
+ */
+export async function checkAndSyncBackground(): Promise<{
+	success: boolean;
+	error?: string;
+	message?: string;
+	newEvents?: number;
+	newAttendance?: number;
+}> {
+	try {
+		const session = await auth();
+		if (!session?.user?.discordId) return { success: false, error: "Not logged in" };
+
+		await connectDB();
+		const user = await User.findOne({ discordId: session.user.discordId }).lean();
+
+		if (!user?.vtcToken) return { success: false, error: "No token stored" };
+
+		const lastSync = user.lastSync ? new Date(user.lastSync) : new Date(0);
+		const now = new Date();
+		const diffHours = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60);
+
+		if (diffHours >= 24) {
+			console.log("Background sync triggered for user:", session.user.discordId);
+			return await syncVtcData(user.vtcToken, getCurrentSemester());
+		}
+
+		return { success: true, message: "Sync not needed yet" };
+	} catch (error) {
+		return { success: false, error: error instanceof Error ? error.message : "Background sync failed" };
+	}
+}
+
+// Keep the legacy function for backward compatibility
+export async function fetchTimetable(token: string, semesterNum: number = getCurrentSemester()): Promise<{ success: boolean; data?: TimetableEvent[]; error?: string }> {
+	try {
+		const months = SEMESTER_MAP[semesterNum];
+		if (!months) {
+			return {
+				success: false,
+				error: "Invalid semester number. Use 1 (Fall), 2 (Spring), or 3 (Summer).",
+			};
+		}
+
+		const api = new API({ token });
+		const currentYear = new Date().getFullYear();
+		const lectureList: TimetableEvent[] = [];
+
+		for (const month of months) {
+			let effectiveYear = currentYear;
+
+			if (semesterNum === 1 && [9, 10, 11, 12].includes(month)) {
+				effectiveYear = currentYear - 1;
+			}
+
+			console.log(`Fetching Semester ${semesterNum}: Month ${month}, Year ${effectiveYear}`);
+
+			try {
+				const response = (await api.getTimeTableAndReminderList(month, effectiveYear)) as VtcApiResponse;
+
+				if (!response.isSuccess) {
+					console.warn(`API error for month ${month}:`, response.errorMsg);
+					continue;
+				}
+
+				const rawList = response.payload?.timetable?.add || [];
+				lectureList.push(...rawList);
+			} catch (err) {
+				console.error(`Error processing month ${month}:`, err instanceof Error ? err.message : err);
+			}
+		}
+
+		if (lectureList.length === 0) {
+			return {
+				success: false,
+				error: "No timetable events found for the selected semester.",
+			};
+		}
+
+		return { success: true, data: lectureList };
+	} catch (error) {
+		console.error("Error fetching timetable:", error);
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Failed to fetch timetable",
+		};
+	}
+}

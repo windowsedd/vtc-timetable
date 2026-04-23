@@ -61,7 +61,7 @@ export default function ExportSemesterButton({
         <button
             onClick={handleExport}
             disabled={isExporting}
-            className={`${buttonClass} flex items-center gap-2 text-sm disabled:opacity-50`}
+            className={`${buttonClass} flex items-center gap-2 text-sm disabled:opacity-50 active:scale-95 transition-transform ${isExporting ? "btn-syncing" : ""}`}
         >
             {isExporting ? (
                 <>

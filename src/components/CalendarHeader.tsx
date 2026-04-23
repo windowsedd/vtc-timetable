@@ -1,7 +1,8 @@
 "use client";
 
-import { Views } from "react-big-calendar";
 import dayjs from "dayjs";
+import { useTranslations } from "next-intl";
+import { Views } from "react-big-calendar";
 
 type ViewType = (typeof Views)[keyof typeof Views];
 
@@ -18,16 +19,16 @@ export default function CalendarHeader({
     onNavigate,
     onViewChange,
 }: CalendarHeaderProps) {
+    const t = useTranslations("calendar");
     const formattedDate = dayjs(date).format(
         view === Views.DAY ? "MMMM D, YYYY" : "MMMM YYYY"
     );
 
-    // View options: Month, Work Week (Mon-Fri), Day, Agenda
     const viewOptions: { key: ViewType; label: string }[] = [
-        { key: "month", label: "Month" },
-        { key: "work_week", label: "Week" },
-        { key: "day", label: "Day" },
-        { key: "agenda", label: "Agenda" },
+        { key: "month", label: t("month") },
+        { key: "work_week", label: t("week") },
+        { key: "day", label: t("day") },
+        { key: "agenda", label: t("agenda") },
     ];
 
     return (
@@ -39,19 +40,8 @@ export default function CalendarHeader({
                     className="btn-icon"
                     aria-label="Previous"
                 >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M15.75 19.5 8.25 12l7.5-7.5"
-                        />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                     </svg>
                 </button>
                 <button
@@ -59,31 +49,23 @@ export default function CalendarHeader({
                     className="btn-icon"
                     aria-label="Next"
                 >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="m8.25 4.5 7.5 7.5-7.5 7.5"
-                        />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                     </svg>
                 </button>
                 <button
                     onClick={() => onNavigate("TODAY")}
-                    className="btn-secondary ml-2 text-sm"
+                    className="btn-secondary ml-2 text-sm active:scale-95"
                 >
-                    Today
+                    {t("today")}
                 </button>
             </div>
 
-            {/* Center: Date */}
-            <h2 className="calendar-title text-lg font-semibold md:absolute md:left-1/2 md:-translate-x-1/2">
+            {/* Center: Date — animates on change */}
+            <h2
+                key={formattedDate}
+                className="calendar-title text-lg font-semibold md:absolute md:left-1/2 md:-translate-x-1/2 animate-fadeIn"
+            >
                 {formattedDate}
             </h2>
 
@@ -93,9 +75,9 @@ export default function CalendarHeader({
                     <button
                         key={v.key}
                         onClick={() => onViewChange(v.key)}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${view === v.key
-                            ? "bg-white dark:bg-[var(--calendar-border)] text-[var(--foreground)] shadow-sm"
-                            : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 active:scale-95 ${view === v.key
+                            ? "bg-white dark:bg-[var(--calendar-border)] text-[var(--foreground)] shadow-sm scale-[1.02]"
+                            : "text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[rgba(0,0,0,0.04)] dark:hover:bg-[rgba(255,255,255,0.06)]"
                             }`}
                     >
                         {v.label}

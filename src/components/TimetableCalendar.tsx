@@ -1,11 +1,11 @@
 "use client";
 
-import { Calendar, dayjsLocalizer, Views, View } from "react-big-calendar";
-import dayjs from "dayjs";
-import "react-big-calendar/lib/css/react-big-calendar.css";
 import { CalendarEvent } from "@/types/timetable";
-import { useMemo } from "react";
-import { PASTEL_COLORS } from "@/lib/colors";
+import dayjs from "dayjs";
+import "dayjs/locale/zh-hk";
+import { useEffect, useMemo } from "react";
+import { Calendar, dayjsLocalizer, View, Views } from "react-big-calendar";
+import "react-big-calendar/lib/css/react-big-calendar.css";
 import CalendarHeader from "./CalendarHeader";
 
 const localizer = dayjsLocalizer(dayjs);
@@ -17,6 +17,7 @@ interface TimetableCalendarProps {
     onViewChange: (view: View) => void;
     onNavigate: (date: Date) => void;
     onSelectEvent?: (event: CalendarEvent) => void;
+    locale?: string;
 }
 
 export default function TimetableCalendar({
@@ -26,7 +27,13 @@ export default function TimetableCalendar({
     onViewChange,
     onNavigate,
     onSelectEvent,
+    locale = "en",
 }: TimetableCalendarProps) {
+    // Set dayjs locale for calendar month/weekday names
+    useEffect(() => {
+        const dayjsLocale = locale === "zh-HK" ? "zh-hk" : "en";
+        dayjs.locale(dayjsLocale);
+    }, [locale]);
     const { defaultDate, minTime, maxTime } = useMemo(
         () => ({
             defaultDate: events.length > 0 ? events[0].start : new Date(),
@@ -67,38 +74,42 @@ export default function TimetableCalendar({
 
     // Event styling with pastel colors and finished state
     const eventPropGetter = (event: CalendarEvent) => {
+        // Moodle deadline — distinct red-orange style
+        if (event.resource?.eventType === "deadline") {
+            const now = new Date();
+            const isPast = event.end < now;
+            return {
+                className: "event-deadline",
+                style: {
+                    borderRadius: "8px",
+                    padding: "4px 8px 4px 13px",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    opacity: isPast ? 0.82 : 1,
+                    filter: isPast ? "grayscale(20%)" : "none",
+                },
+            };
+        }
+
         const colorIndex = event.resource?.colorIndex ?? 0;
-        const color = PASTEL_COLORS[colorIndex] || PASTEL_COLORS[0];
         const now = new Date();
         // Event is finished if status says so OR if end time has passed
         const isFinished = event.resource?.status === "FINISHED" || (event.resource?.status === "UPCOMING" && event.end < now);
         const isCanceled = event.resource?.status === "CANCELED";
         const isMarkedAbsent = event.resource?.status === "ABSENT";
-        const isDark = [0, 1, 2, 5, 8, 9].includes(colorIndex);
-
-        // Determine background - red stripes for manually marked absent
-        let backgroundColor = color;
-        if (isCanceled) {
-            backgroundColor = "#fecaca";
-        } else if (isMarkedAbsent) {
-            backgroundColor = color; // Keep color, we'll add stripes via gradient
-        }
 
         return {
             className: `event-color-${colorIndex} ${isFinished ? "event-finished" : ""} ${isCanceled ? "event-canceled" : ""} ${isMarkedAbsent ? "event-absent" : ""}`,
             style: {
-                backgroundColor,
                 backgroundImage: isMarkedAbsent
-                    ? `repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(220, 38, 38, 0.3) 3px, rgba(220, 38, 38, 0.3) 6px)`
+                    ? `repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(220, 38, 38, 0.32) 4px, rgba(220, 38, 38, 0.32) 8px)` 
                     : "none",
-                color: isCanceled ? "#991b1b" : (isDark ? "white" : "#1f2937"),
-                border: isMarkedAbsent ? "2px solid #dc2626" : (isCanceled ? "1px solid #f87171" : "none"),
-                borderRadius: "6px",
-                padding: "2px 8px",
+                borderRadius: "8px",
+                padding: "4px 8px 4px 13px",
                 fontSize: "12px",
-                fontWeight: 500,
-                opacity: (isFinished || isCanceled) ? 0.6 : 1,
-                filter: isFinished ? "grayscale(70%)" : "none",
+                fontWeight: 700,
+                opacity: (isFinished || isCanceled) ? 0.82 : 1,
+                filter: isFinished ? "grayscale(20%)" : "none",
                 textDecoration: isCanceled ? "line-through" : "none",
             },
         };
@@ -156,30 +167,48 @@ export default function TimetableCalendar({
                     }}
                     components={{
                         toolbar: () => null, // Hide default toolbar
-                        event: ({ event }: { event: CalendarEvent }) => (
-                            <div className="h-full flex flex-col overflow-hidden">
-                                <div className="font-medium text-xs leading-tight">
-                                    {event.resource?.status === "CANCELED" && <span className="mr-1">🚫</span>}
-                                    {event.resource?.courseTitle || event.title}
-                                    {event.resource?.courseCode && (
-                                        <span className="opacity-70"> ({event.resource.courseCode})</span>
+                        event: ({ event }: { event: CalendarEvent }) => {
+                            if (event.resource?.eventType === "deadline") {
+                                return (
+                                    <div className="h-full flex flex-col overflow-hidden">
+                                        <div className="font-semibold text-xs leading-tight flex items-center gap-1">
+                                            <span>🚩</span>
+                                            <span className="truncate">{event.title}</span>
+                                        </div>
+                                        <div className="text-[10px] opacity-80 truncate mt-0.5">
+                                            {event.resource.courseCode}
+                                        </div>
+                                    </div>
+                                );
+                            }
+                            return (
+                                <div className="h-full flex flex-col overflow-hidden">
+                                    <div className="font-medium text-xs leading-tight">
+                                        {event.resource?.status === "CANCELED" && <span className="mr-1">🚫</span>}
+                                        {event.resource?.courseTitle || event.title}
+                                        {event.resource?.courseCode && (
+                                            <span className="opacity-70"> ({event.resource.courseCode})</span>
+                                        )}
+                                    </div>
+                                    {event.resource?.location && (
+                                        <div className="text-[10px] opacity-80 mt-0.5">
+                                            📍 {event.resource.location}
+                                        </div>
+                                    )}
+                                    {event.resource?.lecturer && (
+                                        <div className="text-[10px] opacity-70 truncate">
+                                            👤 {event.resource.lecturer}
+                                        </div>
                                     )}
                                 </div>
-                                {event.resource?.location && (
-                                    <div className="text-[10px] opacity-80 mt-0.5">
-                                        📍 {event.resource.location}
-                                    </div>
-                                )}
-                                {event.resource?.lecturer && (
-                                    <div className="text-[10px] opacity-70 truncate">
-                                        👤 {event.resource.lecturer}
-                                    </div>
-                                )}
-                            </div>
-                        ),
+                            );
+                        },
                     }}
                 />
             </div>
         </div>
     );
 }
+
+
+

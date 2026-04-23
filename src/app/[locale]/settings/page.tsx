@@ -1,0 +1,321 @@
+"use client";
+
+import { getUserSettings, updateEmailPassword } from "@/app/actions/settings";
+import { motion } from "framer-motion";
+import { useLocale } from "next-intl";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+// Framer Motion animation variants
+const containerVariants = {
+	hidden: { opacity: 0 },
+	visible: {
+		opacity: 1,
+		transition: { staggerChildren: 0.08 },
+	},
+};
+
+const itemVariants = {
+	hidden: { opacity: 0, y: 12 },
+	visible: {
+		opacity: 1,
+		y: 0,
+		transition: { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] as const },
+	},
+};
+
+
+export default function SettingsPage() {
+	const locale = useLocale();
+	const [loading, setLoading] = useState(true);
+	const [settings, setSettings] = useState<{
+		email?: string;
+		hasPassword: boolean;
+		authProviders: string[];
+		discordUsername?: string;
+		vtcStudentId?: string;
+	} | null>(null);
+
+	// Email/Password form state
+	const [email, setEmail] = useState("");
+	const [password, setPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
+	const [emailPasswordLoading, setEmailPasswordLoading] = useState(false);
+	const [emailPasswordMessage, setEmailPasswordMessage] = useState<{
+		type: "success" | "error";
+		text: string;
+	} | null>(null);
+
+	// Student ID visibility state
+	const [isStudentIdVisible, setIsStudentIdVisible] = useState(false);
+
+	useEffect(() => {
+		// eslint-disable-next-line react-hooks/immutability
+		loadSettings();
+	}, []);
+
+	const loadSettings = async () => {
+		setLoading(true);
+		const result = await getUserSettings();
+		if (result.success && result.data) {
+			setSettings(result.data);
+			setEmail(result.data.email || "");
+		}
+		setLoading(false);
+	};
+
+	const handleEmailPasswordSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setEmailPasswordMessage(null);
+
+		if (!email || !password) {
+			setEmailPasswordMessage({ type: "error", text: "Email and password are required." });
+			return;
+		}
+
+		if (password !== confirmPassword) {
+			setEmailPasswordMessage({ type: "error", text: "Passwords do not match." });
+			return;
+		}
+
+		setEmailPasswordLoading(true);
+		const result = await updateEmailPassword(email, password);
+		setEmailPasswordLoading(false);
+
+		if (result.success) {
+			setEmailPasswordMessage({ type: "success", text: "Email and password updated successfully!" });
+			setPassword("");
+			setConfirmPassword("");
+			loadSettings();
+		} else {
+			setEmailPasswordMessage({ type: "error", text: result.error || "Failed to update." });
+		}
+	};
+
+	if (loading) {
+		return (
+			<div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
+				<div className="text-center">
+					<div className="w-10 h-10 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+					<p className="text-[var(--text-secondary)] text-sm">Loading settings…</p>
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="min-h-screen bg-[var(--background)]">
+			{/* Header */}
+			<header className="border-b" style={{ borderColor: "#222", background: "var(--bg-subtle)" }}>
+				<div className="max-w-2xl mx-auto px-6 py-4">
+					<div className="flex items-center gap-3">
+						<Link
+							href={`/${locale}`}
+							className="btn-icon"
+							aria-label="Back to calendar"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+								<path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+							</svg>
+						</Link>
+						<h1 className="text-lg font-semibold tracking-tight">Settings</h1>
+					</div>
+				</div>
+			</header>
+
+			{/* Content */}
+			<motion.main
+				className="max-w-2xl mx-auto px-6 py-8 space-y-6"
+				variants={containerVariants}
+				initial="hidden"
+				animate="visible"
+			>
+				{/* ── Account Information ────────────────── */}
+				<motion.div className="settings-section" variants={itemVariants}>
+					<div className="settings-section-header">
+						<h2>Account</h2>
+						<p>Your profile and connected identifiers.</p>
+					</div>
+					<div className="settings-section-body">
+						<div className="settings-row">
+							<span className="settings-row-label">Discord</span>
+							<span className="settings-row-value flex items-center gap-2">
+								<svg className="w-4 h-4 text-[#5865F2]" fill="currentColor" viewBox="0 0 24 24">
+									<path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+								</svg>
+								{settings?.discordUsername || "N/A"}
+							</span>
+						</div>
+
+						<div className="settings-row">
+							<span className="settings-row-label">VTC Student ID</span>
+							<div className="flex items-center gap-2">
+								<span className="settings-row-value font-mono text-xs tracking-wide">
+									{settings?.vtcStudentId
+										? (isStudentIdVisible ? settings.vtcStudentId : "•".repeat(settings.vtcStudentId.length))
+										: <span className="text-[var(--text-tertiary)]">Not synced</span>
+									}
+								</span>
+								{settings?.vtcStudentId && (
+									<button
+										type="button"
+										onClick={() => setIsStudentIdVisible(!isStudentIdVisible)}
+										className="btn-icon"
+										aria-label={isStudentIdVisible ? "Hide Student ID" : "Show Student ID"}
+									>
+										{isStudentIdVisible ? (
+											<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+												<path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+											</svg>
+										) : (
+											<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+												<path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+												<path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+											</svg>
+										)}
+									</button>
+								)}
+							</div>
+						</div>
+
+						<div className="settings-row">
+							<span className="settings-row-label">Login Methods</span>
+							<div className="flex items-center gap-2">
+								{settings?.authProviders && settings.authProviders.length > 0 ? (
+									settings.authProviders.map((provider) => (
+										<span key={provider} className="badge badge-blue">
+											{provider === "discord" && (
+												<svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+													<path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+												</svg>
+											)}
+											{provider === "credentials" && (
+												<svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+													<path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+												</svg>
+											)}
+											{provider === "credentials" ? "Email" : provider}
+										</span>
+									))
+								) : (
+									<span className="text-[var(--text-tertiary)] text-xs">None</span>
+								)}
+							</div>
+						</div>
+					</div>
+				</motion.div>
+
+				{/* ── Security ────────────────────────────── */}
+				<motion.div className="settings-section" variants={itemVariants}>
+					<div className="settings-section-header">
+						<h2>Security</h2>
+						<p>
+							{settings?.hasPassword
+								? "Update your email and password for credential-based login."
+								: "Set an email and password to enable an alternative login method alongside Discord."}
+						</p>
+					</div>
+					<div className="settings-section-body">
+						<form onSubmit={handleEmailPasswordSubmit} className="space-y-4">
+							<div>
+								<label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
+									Email
+								</label>
+								<input
+									type="email"
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
+									className="input-field"
+									placeholder="your.email@example.com"
+									required
+								/>
+							</div>
+
+							<div>
+								<label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
+									{settings?.hasPassword ? "New Password" : "Password"}
+								</label>
+								<input
+									type="password"
+									value={password}
+									onChange={(e) => setPassword(e.target.value)}
+									className="input-field"
+									placeholder="At least 8 characters"
+									minLength={8}
+									required
+								/>
+							</div>
+
+							<div>
+								<label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
+									Confirm Password
+								</label>
+								<input
+									type="password"
+									value={confirmPassword}
+									onChange={(e) => setConfirmPassword(e.target.value)}
+									className="input-field"
+									placeholder="Re-enter password"
+									required
+								/>
+							</div>
+
+							{emailPasswordMessage && (
+								<div className={`px-4 py-3 rounded-lg text-sm font-medium ${emailPasswordMessage.type === "success"
+									? "bg-[var(--success-bg)] text-[var(--success)] border border-[rgba(62,207,142,0.15)]"
+									: "bg-[var(--error-bg)] text-[var(--error)] border border-[rgba(245,83,83,0.15)]"
+								}`}>
+									{emailPasswordMessage.text}
+								</div>
+							)}
+
+							<button
+								type="submit"
+								disabled={emailPasswordLoading}
+								className="btn-primary w-full"
+							>
+								{emailPasswordLoading
+									? (
+										<span className="flex items-center justify-center gap-2">
+											<svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+												<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+												<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+											</svg>
+											Saving…
+										</span>
+									)
+									: settings?.hasPassword ? "Update Password" : "Set Password"
+								}
+							</button>
+						</form>
+					</div>
+				</motion.div>
+
+				{/* ── Danger Zone ─────────────────────────── */}
+				<motion.div
+					className="settings-section"
+					style={{ borderColor: "rgba(245, 83, 83, 0.18)" }}
+					variants={itemVariants}
+				>
+					<div className="settings-section-header" style={{ borderBottomColor: "rgba(245, 83, 83, 0.10)" }}>
+						<h2 className="text-[var(--error)]">Danger Zone</h2>
+						<p>Irreversible actions. Proceed with caution.</p>
+					</div>
+					<div className="settings-section-body">
+						<div className="flex items-center justify-between">
+							<div>
+								<p className="text-sm font-medium">Clear VTC Data</p>
+								<p className="text-xs text-[var(--text-tertiary)] mt-0.5">
+									Remove all synced timetable and attendance data from your account.
+								</p>
+							</div>
+							<button className="btn-danger text-xs" disabled>
+								Coming Soon
+							</button>
+						</div>
+					</div>
+				</motion.div>
+			</motion.main>
+		</div>
+	);
+}

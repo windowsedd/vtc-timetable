@@ -28,5 +28,9 @@ export interface CalendarEvent {
     semester?: SemesterType;
     status?: EventStatusType;
     vtc_id?: string;
+    // Moodle deadline fields
+    eventType?: "class" | "deadline";
+    actionUrl?: string;
+    courseUrl?: string;
   };
 }

@@ -1,17 +1,15 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { HybridAttendanceStats, deduplicateData } from "@/app/actions";
+import { exportSemesterIcs, HybridAttendanceStats } from "@/app/actions";
 import { PASTEL_COLORS } from "@/lib/colors";
+import { getDefaultSemester, getSemesterDisplayLabel, getSemesterLabel } from "@/lib/utils";
 import { CalendarEvent } from "@/types/timetable";
+import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
 import AttendanceModal from "./AttendanceModal";
-import SemesterSummaryCard from "./SemesterSummaryCard";
 import CourseDetailsModal from "./CourseDetailsModal";
+import SemesterSummaryCard from "./SemesterSummaryCard";
 import SubscribeButton from "./SubscribeButton";
-import ExportSemesterButton from "./ExportSemesterButton";
-import SkippingCalculator from "./SkippingCalculator";
-import { calculateSkippingStats } from "@/lib/attendance-logic";
-import UserDropdown from "./UserDropdown";
 
 // Semester display names
 const SEMESTER_LABELS: Record<string, string> = {
@@ -40,9 +38,6 @@ interface SidebarProps {
     events: CalendarEvent[];
     attendance: HybridAttendanceStats[];
     onSyncClick: () => void;
-    onExportClick: () => void;
-    onSignIn: () => void;
-    onSignOut: () => void;
     onRefreshAttendance: () => void;
     onRefreshCalendar: () => void;
     isSyncing: boolean;
@@ -57,14 +52,85 @@ interface SidebarProps {
     sidebarOpen?: boolean;
 }
 
+/** Calendar Tools — Vercel-style action card for dynamic semester export */
+function CalendarToolsCard() {
+    const [isExporting, setIsExporting] = useState(false);
+    const currentSem = getDefaultSemester();
+    const semKey = getSemesterLabel(currentSem);
+    const semDisplay = getSemesterDisplayLabel(currentSem);
+
+    const filenameMap: Record<number, string> = {
+        1: "VTC_Schedule_Fall",
+        2: "VTC_Schedule_Spring",
+        3: "VTC_Schedule_Summer",
+    };
+
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            const result = await exportSemesterIcs(semKey);
+            if (!result.success || !result.data) {
+                alert(result.error || "Failed to export calendar");
+                return;
+            }
+            const blob = new Blob([result.data], { type: "text/calendar;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${filenameMap[currentSem] || "VTC_Schedule"}.ics`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Export error:", error);
+            alert("Failed to export calendar");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    return (
+        <div className="action-card p-3 rounded-xl border border-[#222] bg-[#0a0a0a] space-y-3 hover:border-[rgba(255,255,255,0.2)] transition-colors">
+            <div className="space-y-1">
+                <h4 className="action-card-title text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-wider">
+                    Calendar Tools
+                </h4>
+                <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+                    Export your {semDisplay} schedule to .ics
+                </p>
+            </div>
+            <button
+                onClick={handleExport}
+                disabled={isExporting}
+                className="action-card-button w-full py-2 bg-white text-black rounded-lg text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#e5e5e5] active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+                {isExporting ? (
+                    <>
+                        <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Exporting…
+                    </>
+                ) : (
+                    <>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        Export {semDisplay}
+                    </>
+                )}
+            </button>
+        </div>
+    );
+}
+
 export default function Sidebar({
     courses,
     events,
     attendance,
     onSyncClick,
-    onExportClick,
-    onSignIn,
-    onSignOut,
     onRefreshAttendance,
     onRefreshCalendar,
     isSyncing,
@@ -73,6 +139,7 @@ export default function Sidebar({
     user,
     sidebarOpen,
 }: SidebarProps) {
+    const t = useTranslations("calendar");
     const [selectedCourse, setSelectedCourse] = useState<HybridAttendanceStats | null>(null);
     const [selectedCourseInfo, setSelectedCourseInfo] = useState<CourseInfo | null>(null);
     const [calculatingCourse, setCalculatingCourse] = useState<HybridAttendanceStats | null>(null);
@@ -235,22 +302,10 @@ export default function Sidebar({
 
     return (
         <>
-            <aside className={`glass w-[280px] min-w-[280px] h-full flex flex-col border-r border-[var(--sidebar-border)] overflow-hidden ${sidebarOpen ? "sidebar-open" : ""}`}>
+            <aside className={`glass w-[280px] min-w-[280px] h-full flex flex-col border-r border-[#222] overflow-hidden ${sidebarOpen ? "sidebar-open" : ""}`}>
                 {/* Header */}
-                <div className="p-4 border-b border-[var(--sidebar-border)]">
-                    <div className="flex items-center justify-between">
-                        <h1 className="text-xl font-semibold tracking-tight">Calendar</h1>
-                        {user ? (
-                            <UserDropdown user={user} />
-                        ) : (
-                            <button
-                                onClick={onSignIn}
-                                className="text-sm text-blue-500 hover:text-blue-600 transition-colors"
-                            >
-                                Sign In
-                            </button>
-                        )}
-                    </div>
+                <div className="p-4 border-b border-[#222]">
+                    <h1 className="text-base font-semibold tracking-tight">Calendar</h1>
                 </div>
 
                 {/* Scrollable content */}
@@ -259,7 +314,7 @@ export default function Sidebar({
                     <section>
                         <div className="flex items-center justify-between mb-3">
                             <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                                My Calendars
+                                {t("myCalendars")}
                             </h2>
                             <button
                                 onClick={onRefreshCalendar}
@@ -286,7 +341,7 @@ export default function Sidebar({
 
                         {courses.length === 0 ? (
                             <p className="text-sm text-[var(--text-tertiary)]">
-                                No courses synced yet
+                                {t("noCoursesYet")}
                             </p>
                         ) : (
                             <div className="space-y-2">
@@ -326,7 +381,7 @@ export default function Sidebar({
                                                         <button
                                                             key={`${course.courseCode}-${course.semester}`}
                                                             onClick={() => setSelectedCourseInfo(course)}
-                                                            className={`w-full flex items-center gap-3 py-1.5 px-2 rounded-lg hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.05)] transition-colors cursor-pointer text-left ${course.status === "FINISHED" ? "opacity-60" : ""}`}
+                                                            className={`w-full flex items-center gap-3 py-1.5 px-2 rounded-lg hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.05)] hover:-translate-y-px hover:shadow-sm active:translate-y-0 active:shadow-none transition-all cursor-pointer text-left ${course.status === "FINISHED" ? "opacity-60" : ""}`}
                                                         >
                                                             <div
                                                                 className="color-dot"
@@ -425,7 +480,7 @@ export default function Sidebar({
                                                                 <button
                                                                     key={`${course.courseCode}-${course.semester}`}
                                                                     onClick={() => setSelectedCourse(course)}
-                                                                    className={`w-full py-2 px-2 rounded-lg hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.05)] transition-colors text-left ${isFinished ? "opacity-60" : ""}`}
+                                                                    className={`w-full py-2 px-2 rounded-lg hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.05)] hover:-translate-y-px hover:shadow-sm active:translate-y-0 active:shadow-none transition-all text-left ${isFinished ? "opacity-60" : ""}`}
                                                                 >
                                                                     <div className="flex items-center justify-between mb-1">
                                                                         <span className="text-sm font-medium truncate flex-1">
@@ -501,7 +556,7 @@ export default function Sidebar({
                     <button
                         onClick={onSyncClick}
                         disabled={isSyncing}
-                        className="btn-primary w-full flex items-center justify-center gap-2"
+                        className={`btn-primary w-full flex items-center justify-center gap-2 ${isSyncing ? "btn-syncing" : ""}`}
                     >
                         {isSyncing ? (
                             <>
@@ -548,16 +603,9 @@ export default function Sidebar({
                         )}
                     </button>
 
-                    {/* Export Semester ICS - show for each semester with courses */}
+                    {/* Calendar Tools — Dynamic Export */}
                     {groupedCourses.length > 0 && (
-                        <div className="space-y-2">
-                            {groupedCourses.map(([semester]) => (
-                                <ExportSemesterButton
-                                    key={`export-${semester}`}
-                                    semester={semester}
-                                />
-                            ))}
-                        </div>
+                        <CalendarToolsCard />
                     )}
 
                     {/* Calendar Subscription - auto-detects current semester */}
@@ -595,3 +643,4 @@ export default function Sidebar({
         </>
     );
 }
+

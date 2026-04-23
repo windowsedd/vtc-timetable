@@ -21,8 +21,17 @@ export default function EventDetailsModal({
     const [editStartTime, setEditStartTime] = useState("");
     const [editEndTime, setEditEndTime] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [isClosing, setIsClosing] = useState(false);
 
     if (!isOpen || !event) return null;
+
+    const handleClose = () => {
+        setIsClosing(true);
+        setTimeout(() => {
+            setIsClosing(false);
+            onClose();
+        }, 180);
+    };
 
     // Format time to "10:30 AM" format
     const formatTime = (date: Date) => {
@@ -69,7 +78,7 @@ export default function EventDetailsModal({
         setIsLoading(false);
         setIsEditing(false);
         if (onRefresh) onRefresh();
-        onClose();
+        handleClose();
     };
 
     const handleCancelClass = async () => {
@@ -81,7 +90,7 @@ export default function EventDetailsModal({
         }
         setIsLoading(false);
         if (onRefresh) onRefresh();
-        onClose();
+        handleClose();
     };
 
     const handleFinishEarly = async () => {
@@ -90,7 +99,7 @@ export default function EventDetailsModal({
         await finishCourseEarly(event.resource?.courseCode!, event.resource?.semester!);
         setIsLoading(false);
         if (onRefresh) onRefresh();
-        onClose();
+        handleClose();
     };
 
     const isMarkedAbsent = event.resource?.status === "ABSENT";
@@ -110,16 +119,118 @@ export default function EventDetailsModal({
         console.log("Toggle result:", result);
         setIsLoading(false);
         if (onRefresh) onRefresh();
-        onClose();
+        handleClose();
     };
 
     const startInputVal = `${event.start.getHours().toString().padStart(2, '0')}:${event.start.getMinutes().toString().padStart(2, '0')}`;
     const endInputVal = `${event.end.getHours().toString().padStart(2, '0')}:${event.end.getMinutes().toString().padStart(2, '0')}`;
 
+    // ── Moodle Deadline Modal ──────────────────────────────────────
+    if (event.resource?.eventType === "deadline") {
+        const dueDate = event.start.toLocaleDateString("en-US", {
+            weekday: "short", month: "short", day: "numeric", year: "numeric",
+        });
+        const dueTime = formatTime(event.start);
+        const isPast = event.start < new Date();
+
+        return (
+            <div className={`modal-overlay ${isClosing ? "modal-closing" : ""}`} onClick={handleClose}>
+                <div
+                    className={`modal-content max-w-md ${isClosing ? "modal-closing" : ""}`}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {/* Header */}
+                    <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1 pr-4">
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xl">🚩</span>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${isPast ? "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400" : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"}`}>
+                                    {isPast ? "Overdue" : "Deadline"}
+                                </span>
+                            </div>
+                            <h2 className="text-lg font-semibold text-[var(--foreground)] leading-snug">
+                                {event.title}
+                            </h2>
+                            <p className="text-sm text-[var(--text-secondary)] mt-1">
+                                {event.resource.courseTitle}
+                            </p>
+                        </div>
+                        <button onClick={handleClose} className="btn-icon shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Due date */}
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-8 h-8 rounded-lg bg-[var(--calendar-header-bg)] flex items-center justify-center shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-[var(--text-secondary)]">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">Due</p>
+                            <p className={`text-sm font-semibold ${isPast ? "text-gray-500 line-through" : "text-red-600 dark:text-red-400"}`}>
+                                {dueDate} · {dueTime}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Course */}
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-8 h-8 rounded-lg bg-[var(--calendar-header-bg)] flex items-center justify-center shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-[var(--text-secondary)]">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">Course</p>
+                            <p className="text-sm font-medium">{event.resource.courseCode}</p>
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-col gap-2">
+                        {event.resource.actionUrl && (
+                            <a
+                                href={event.resource.actionUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={handleClose}
+                                className="btn-primary flex items-center justify-center gap-2 text-sm no-underline active:scale-95"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                </svg>
+                                Open Assignment
+                            </a>
+                        )}
+                        {event.resource.courseUrl && (
+                            <a
+                                href={event.resource.courseUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={handleClose}
+                                className="btn-secondary flex items-center justify-center gap-2 text-sm no-underline active:scale-95"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253" />
+                                </svg>
+                                Visit Course
+                            </a>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    // ── End Deadline Modal ─────────────────────────────────────────
+
     return (
-        <div className="modal-overlay" onClick={onClose}>
+        <div className={`modal-overlay ${isClosing ? "modal-closing" : ""}`} onClick={handleClose}>
             <div
-                className="modal-content max-w-md"
+                className={`modal-content max-w-md ${isClosing ? "modal-closing" : ""}`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -139,7 +250,7 @@ export default function EventDetailsModal({
                             {event.resource?.courseTitle}
                         </p>
                     </div>
-                    <button onClick={onClose} className="btn-icon flex-shrink-0">
+                    <button onClick={handleClose} className="btn-icon flex-shrink-0">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"

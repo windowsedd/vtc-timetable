@@ -5,12 +5,14 @@ declare module "next-auth" {
         user: {
             discordId?: string;
             vtcStudentId?: string;
+            locale?: string;
         } & DefaultSession["user"];
     }
 
     interface User {
         discordId?: string;
         vtcStudentId?: string;
+        locale?: string;
     }
 }
 
@@ -18,5 +20,6 @@ declare module "next-auth/jwt" {
     interface JWT {
         discordId?: string;
         vtcStudentId?: string;
+        locale?: string;
     }
 }

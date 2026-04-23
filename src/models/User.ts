@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import mongoose, { Document, Model, Schema } from "mongoose";
 
 export interface IUser extends Document {
     discordId: string;
@@ -11,6 +11,7 @@ export interface IUser extends Document {
     vtcStudentId?: string;
     attendanceGracePeriod: number; // Minutes
     lastSync?: Date;
+    locale: "en" | "zh-HK";
     createdAt: Date;
     updatedAt: Date;
 }
@@ -55,6 +56,11 @@ const UserSchema = new Schema<IUser>(
         },
         lastSync: {
             type: Date,
+        },
+        locale: {
+            type: String,
+            enum: ["en", "zh-HK"],
+            default: "en",
         },
     },
     {

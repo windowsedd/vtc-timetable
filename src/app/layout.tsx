@@ -1,33 +1,30 @@
-import Providers from "@/components/Providers";
 import type { Metadata } from "next";
-import "./globals.css";
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
+import { getLocale } from "next-intl/server";
+import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "VTC Calendar | Class Schedule",
   description:
     "View your VTC class schedule on a beautiful calendar and export it to your favorite calendar app.",
   icons: {
-    icon: [
-      {
-        url: '/vtctimetable.svg', // Reference from the public directory
-        href: '/vtctimetable.svg',
-        type: 'image/svg+xml',
-        sizes: 'any', // Best practice for SVG icons
-      },
-    ],
+    icon: [{ url: "/vtctimetable.svg", type: "image/svg+xml", sizes: "any" }],
   },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+// Root layout — owns <html> and <body> as required by Next.js 16.
+// Uses getLocale() from next-intl/server to set the correct lang attribute.
+// [locale]/layout.tsx provides NextIntlClientProvider and Providers (no html/body).
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const locale = await getLocale();
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
-        <Providers>{children}</Providers>
-      </body>
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
+    >
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
