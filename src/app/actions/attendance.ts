@@ -176,7 +176,7 @@ export async function toggleEventAttendance(vtcId: string, status: "UPCOMING" | 
 		const vtcStudentId = user.vtcStudentId;
 
 		// Update Event model status field
-		const event = await Event.findOneAndUpdate({ vtc_id: vtcId, vtcStudentId }, { status: status }, { new: true });
+		const event = await Event.findOneAndUpdate({ vtc_id: vtcId, vtcStudentId }, { status: status }, { returnDocument: 'after' });
 
 		if (!event) {
 			return { success: false, error: "Event not found." };

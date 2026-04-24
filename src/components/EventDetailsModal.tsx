@@ -125,6 +125,7 @@ export default function EventDetailsModal({
     const startInputVal = `${event.start.getHours().toString().padStart(2, '0')}:${event.start.getMinutes().toString().padStart(2, '0')}`;
     const endInputVal = `${event.end.getHours().toString().padStart(2, '0')}:${event.end.getMinutes().toString().padStart(2, '0')}`;
 
+
     // ── Moodle Deadline Modal ──────────────────────────────────────
     if (event.resource?.eventType === "deadline") {
         const dueDate = event.start.toLocaleDateString("en-US", {
@@ -236,10 +237,15 @@ export default function EventDetailsModal({
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
                     <div className="flex-1 pr-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <h2 className="text-lg font-semibold text-[var(--foreground)]">
                                 {event.resource?.courseCode}
                             </h2>
+                            {event.resource?.isAdjusted && (
+                                <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded text-[10px] font-semibold">
+                                    Manually Adjusted
+                                </span>
+                            )}
                             {isMarkedAbsent && (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
                                     ❌ Absent

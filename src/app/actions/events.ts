@@ -32,7 +32,7 @@ export async function getStoredEvents(): Promise<{
 
 		const events = await Event.find({ vtcStudentId }).sort({ startTime: 1 }).lean();
 
-		const calendarEvents: CalendarEvent[] = events.map((event: any) => ({
+		const calendarEvents: CalendarEvent[] = events.map((event) => ({
 			title: `${event.courseTitle}`,
 			start: new Date(event.startTime),
 			end: new Date(event.endTime),
@@ -128,7 +128,7 @@ export async function updateEventDetails(eventId: string, newStart: Date, newEnd
 		if (!session?.user?.discordId) return { success: false, error: "Unauthorized" };
 
 		await connectDB();
-		await Event.findOneAndUpdate({ vtc_id: eventId, discordId: session.user.discordId }, { startTime: newStart, endTime: newEnd }, { new: true });
+		await Event.findOneAndUpdate({ vtc_id: eventId, discordId: session.user.discordId }, { startTime: newStart, endTime: newEnd }, { returnDocument: 'after' });
 
 		revalidatePath("/");
 		return { success: true };
@@ -153,12 +153,119 @@ export async function setEventStatus(eventId: string, status: string) {
 			return { success: false, error: "No VTC student ID found." };
 		}
 
-		await Event.findOneAndUpdate({ vtc_id: eventId, vtcStudentId: user.vtcStudentId }, { status }, { new: true });
+		await Event.findOneAndUpdate({ vtc_id: eventId, vtcStudentId: user.vtcStudentId }, { status }, { returnDocument: 'after' });
 
 		revalidatePath("/");
 		return { success: true };
 	} catch (error) {
 		return { success: false, error: error instanceof Error ? error.message : "Failed to set status" };
+	}
+}
+
+/**
+ * Manually override the actual end time of an event (for skipping calculator accuracy).
+ * Sets isTimeAdjusted = true so background syncs won't overwrite the user's change.
+ */
+export async function updateEventActualTimeAction(eventId: string, newEndTimeMs: number) {
+	try {
+		const session = await auth();
+		if (!session?.user?.discordId) return { success: false, error: "Unauthorized" };
+
+		await connectDB();
+
+		const user = await User.findOne({ discordId: session.user.discordId }).lean();
+		if (!user?.vtcStudentId) return { success: false, error: "No VTC student ID found." };
+
+		const event = await Event.findOne({ vtc_id: eventId, vtcStudentId: user.vtcStudentId });
+		if (!event) return { success: false, error: "Event not found." };
+
+		const newEndTime = new Date(newEndTimeMs);
+		const actualDuration = (newEndTime.getTime() - new Date(event.startTime).getTime()) / 1000 / 60;
+
+		await Event.findOneAndUpdate(
+			{ vtc_id: eventId, vtcStudentId: user.vtcStudentId },
+			{ endTime: newEndTime, actualDuration, isTimeAdjusted: true },
+			{ returnDocument: 'after' },
+		);
+
+		revalidatePath("/");
+		return { success: true };
+	} catch (error) {
+		return { success: false, error: error instanceof Error ? error.message : "Failed to update event time" };
+	}
+}
+
+/**
+ * Preview how many events (no attendance data) fall within a date range for a course.
+ */
+export async function previewDeleteEventsByDateRange(
+	courseCode: string,
+	semester: string,
+	fromDate: Date,
+	toDate: Date,
+): Promise<{ success: boolean; count?: number; events?: { vtc_id: string; startTime: string; endTime: string }[]; error?: string }> {
+	try {
+		const session = await auth();
+		if (!session?.user?.discordId) return { success: false, error: "Unauthorized" };
+
+		await connectDB();
+		const user = await User.findOne({ discordId: session.user.discordId }).lean();
+		if (!user?.vtcStudentId) return { success: false, error: "No VTC student ID found." };
+
+		const events = await Event.find({
+			vtcStudentId: user.vtcStudentId,
+			courseCode,
+			semester,
+			startTime: { $gte: fromDate, $lte: toDate },
+			$or: [{ attendanceStatusCode: null }, { attendanceStatusCode: { $exists: false } }],
+		})
+			.select("vtc_id startTime endTime")
+			.sort({ startTime: 1 })
+			.lean();
+
+		return {
+			success: true,
+			count: events.length,
+			events: events.map((e) => ({
+				vtc_id: e.vtc_id as string,
+				startTime: new Date(e.startTime as Date).toISOString(),
+				endTime: new Date(e.endTime as Date).toISOString(),
+			})),
+		};
+	} catch (error) {
+		return { success: false, error: error instanceof Error ? error.message : "Failed to preview" };
+	}
+}
+
+/**
+ * Delete events without attendance data within a date range for a course.
+ */
+export async function deleteEventsByDateRange(
+	courseCode: string,
+	semester: string,
+	fromDate: Date,
+	toDate: Date,
+): Promise<{ success: boolean; deletedCount?: number; error?: string }> {
+	try {
+		const session = await auth();
+		if (!session?.user?.discordId) return { success: false, error: "Unauthorized" };
+
+		await connectDB();
+		const user = await User.findOne({ discordId: session.user.discordId }).lean();
+		if (!user?.vtcStudentId) return { success: false, error: "No VTC student ID found." };
+
+		const result = await Event.deleteMany({
+			vtcStudentId: user.vtcStudentId,
+			courseCode,
+			semester,
+			startTime: { $gte: fromDate, $lte: toDate },
+			$or: [{ attendanceStatusCode: null }, { attendanceStatusCode: { $exists: false } }],
+		});
+
+		revalidatePath("/");
+		return { success: true, deletedCount: result.deletedCount };
+	} catch (error) {
+		return { success: false, error: error instanceof Error ? error.message : "Failed to delete events" };
 	}
 }
 

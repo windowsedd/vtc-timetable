@@ -13,112 +13,101 @@ import { API } from "../../../vtc-api/src/core/api";
 import { buildCompositeEventId, extractToken, getAttendancePresence, getDurationInMinutes, parseVtcLessonTime, SEMESTER_CATEGORY_MAP, SEMESTER_END_DATES, SEMESTER_MAP, SEMESTER_ORDER_MAP } from "./_helpers";
 import type { VtcApiResponse } from "./types";
 
-
 type UpsertAttendanceEventInput = {
-    cls: {
-        date: string;
-        lessonTime: string;
-        roomName?: string;
-        status?: number | null;
-        attendTime?: string | null;
-    };
-    vtcStudentId: string;
-    semester: "SEM 1" | "SEM 2" | "SEM 3";
-    courseCode: string;
-    courseTitle: string;
-    colorIndex: number;
-    fallbackLocation?: string;
+	cls: {
+		date: string;
+		lessonTime: string;
+		roomName?: string;
+		status?: number | null;
+		attendTime?: string | null;
+	};
+	vtcStudentId: string;
+	semester: "SEM 1" | "SEM 2" | "SEM 3";
+	courseCode: string;
+	courseTitle: string;
+	colorIndex: number;
+	fallbackLocation?: string;
 };
 
 function resolveEventStatusFromAttendance(attendanceStatus: "attended" | "late" | "absent", endTime: Date, now: Date) {
-    if (attendanceStatus === "absent") {
-        return "ABSENT" as const;
-    }
+	if (attendanceStatus === "absent") {
+		return "ABSENT" as const;
+	}
 
-    return endTime < now ? "FINISHED" as const : "UPCOMING" as const;
+	return endTime < now ? ("FINISHED" as const) : ("UPCOMING" as const);
 }
 
-async function upsertAttendanceAdjustedEvent({
-    cls,
-    vtcStudentId,
-    semester,
-    courseCode,
-    courseTitle,
-    colorIndex,
-    fallbackLocation = "",
-}: UpsertAttendanceEventInput) {
-    const parsedTime = parseVtcLessonTime(cls.date, cls.lessonTime);
-    if (!parsedTime) {
-        return null;
-    }
+async function upsertAttendanceAdjustedEvent({ cls, vtcStudentId, semester, courseCode, courseTitle, colorIndex, fallbackLocation = "" }: UpsertAttendanceEventInput) {
+	const parsedTime = parseVtcLessonTime(cls.date, cls.lessonTime);
+	if (!parsedTime) {
+		return null;
+	}
 
-    const actualStart = new Date(parsedTime.start * 1000);
-    const actualEnd = new Date(parsedTime.end * 1000);
-    const attendanceStatus = getAttendancePresence(cls);
-    const nextVtcId = buildCompositeEventId(courseCode, parsedTime.start, parsedTime.end);
-    const dayStart = new Date(`${parsedTime.isoDate}T00:00:00+08:00`);
-    const dayEnd = new Date(`${parsedTime.isoDate}T23:59:59+08:00`);
+	const actualStart = new Date(parsedTime.start * 1000);
+	const actualEnd = new Date(parsedTime.end * 1000);
+	const attendanceStatus = getAttendancePresence(cls);
+	const nextVtcId = buildCompositeEventId(courseCode, parsedTime.start, parsedTime.end);
+	const dayStart = new Date(`${parsedTime.isoDate}T00:00:00+08:00`);
+	const dayEnd = new Date(`${parsedTime.isoDate}T23:59:59+08:00`);
 
-    const sameDayEvents = await Event.find({
-        vtcStudentId,
-        semester,
-        courseCode,
-        startTime: { $gte: dayStart, $lte: dayEnd },
-    }).sort({ startTime: 1 });
+	const sameDayEvents = await Event.find({
+		vtcStudentId,
+		semester,
+		courseCode,
+		startTime: { $gte: dayStart, $lte: dayEnd },
+	}).sort({ startTime: 1 });
 
-    const matchingEvent = sameDayEvents.find((eventDoc) => eventDoc.vtc_id === nextVtcId) ?? sameDayEvents.reduce<typeof sameDayEvents[number] | null>((closest, candidate) => {
-        if (!closest) {
-            return candidate;
-        }
+	const matchingEvent =
+		sameDayEvents.find((eventDoc) => eventDoc.vtc_id === nextVtcId) ??
+		sameDayEvents.reduce<(typeof sameDayEvents)[number] | null>((closest, candidate) => {
+			if (!closest) {
+				return candidate;
+			}
 
-        const candidateDelta = Math.abs(new Date(candidate.startTime).getTime() - actualStart.getTime()) + Math.abs(new Date(candidate.endTime).getTime() - actualEnd.getTime());
-        const closestDelta = Math.abs(new Date(closest.startTime).getTime() - actualStart.getTime()) + Math.abs(new Date(closest.endTime).getTime() - actualEnd.getTime());
-        return candidateDelta < closestDelta ? candidate : closest;
-    }, null);
+			const candidateDelta = Math.abs(new Date(candidate.startTime).getTime() - actualStart.getTime()) + Math.abs(new Date(candidate.endTime).getTime() - actualEnd.getTime());
+			const closestDelta = Math.abs(new Date(closest.startTime).getTime() - actualStart.getTime()) + Math.abs(new Date(closest.endTime).getTime() - actualEnd.getTime());
+			return candidateDelta < closestDelta ? candidate : closest;
+		}, null);
 
-    const scheduledStart = matchingEvent?.scheduledStartTime ?? matchingEvent?.startTime ?? actualStart;
-    const scheduledEnd = matchingEvent?.scheduledEndTime ?? matchingEvent?.endTime ?? actualEnd;
-    const scheduledDuration = matchingEvent?.scheduledDuration ?? getDurationInMinutes(new Date(scheduledStart), new Date(scheduledEnd));
-    const isTimeAdjusted = Math.abs(new Date(scheduledStart).getTime() - actualStart.getTime()) > 60000 || Math.abs(new Date(scheduledEnd).getTime() - actualEnd.getTime()) > 60000;
+	const scheduledStart = matchingEvent?.scheduledStartTime ?? matchingEvent?.startTime ?? actualStart;
+	const scheduledEnd = matchingEvent?.scheduledEndTime ?? matchingEvent?.endTime ?? actualEnd;
+	const scheduledDuration = matchingEvent?.scheduledDuration ?? getDurationInMinutes(new Date(scheduledStart), new Date(scheduledEnd));
+	const isTimeAdjusted = Math.abs(new Date(scheduledStart).getTime() - actualStart.getTime()) > 60000 || Math.abs(new Date(scheduledEnd).getTime() - actualEnd.getTime()) > 60000;
 
-    const update = {
-        vtc_id: nextVtcId,
-        vtcStudentId,
-        semester,
-        status: resolveEventStatusFromAttendance(attendanceStatus, actualEnd, new Date()),
-        courseCode,
-        courseTitle,
-        startTime: actualStart,
-        endTime: actualEnd,
-        scheduledStartTime: scheduledStart,
-        scheduledEndTime: scheduledEnd,
-        scheduledDuration,
-        actualDuration: parsedTime.duration,
-        isTimeAdjusted,
-        attendanceStatusCode: cls.status ?? null,
-        location: cls.roomName?.trim() || matchingEvent?.location || fallbackLocation,
-        colorIndex,
-    };
+	const update = {
+		vtc_id: nextVtcId,
+		vtcStudentId,
+		semester,
+		status: resolveEventStatusFromAttendance(attendanceStatus, actualEnd, new Date()),
+		courseCode,
+		courseTitle,
+		startTime: actualStart,
+		endTime: actualEnd,
+		scheduledStartTime: scheduledStart,
+		scheduledEndTime: scheduledEnd,
+		scheduledDuration,
+		actualDuration: parsedTime.duration,
+		isTimeAdjusted,
+		attendanceStatusCode: cls.status ?? null,
+		location: cls.roomName?.trim() || matchingEvent?.location || fallbackLocation,
+		colorIndex,
+	};
 
-    if (matchingEvent) {
-        return Event.findOneAndUpdate(
-            { _id: matchingEvent._id },
-            { $set: update },
-            { new: true }
-        );
-    }
+	if (matchingEvent) {
+		return Event.findOneAndUpdate({ _id: matchingEvent._id }, { $set: update }, { returnDocument: 'after' });
+	}
 
-    return Event.findOneAndUpdate(
-        { vtc_id: nextVtcId, vtcStudentId, semester },
-        {
-            $set: update,
-            $setOnInsert: {
-                lessonType: "",
-                lecturerName: "",
-            },
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+	return Event.findOneAndUpdate(
+		{ vtc_id: nextVtcId, vtcStudentId, semester },
+		{
+			$set: update,
+			$setOnInsert: {
+				lessonType: "",
+				lecturerName: "",
+			},
+		},
+		{ upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
+	);
 }
 /**
  * Main sync function that handles authentication and data persistence
@@ -299,9 +288,12 @@ export async function syncVtcData(
 		const fetchPromises: Promise<number>[] = [];
 
 		switch (semesterNum) {
-			case 1: // Fall - no backfill
-				fetchPromises.push(fetchSemesterTimetable(1, "SEM 1", currentYear));
+			case 1: {
+				// If current month is Jan–Aug (0–7), Fall was in the previous calendar year
+				const sem1Year = new Date().getMonth() >= 8 ? currentYear : currentYear - 1;
+				fetchPromises.push(fetchSemesterTimetable(1, "SEM 1", sem1Year));
 				break;
+			}
 
 			case 2: // Spring - also fetch Fall from previous year
 				fetchPromises.push(
@@ -356,9 +348,7 @@ export async function syncVtcData(
 					if (detailResponse.isSuccess && detailResponse.payload?.classes) {
 						for (const cls of detailResponse.payload.classes) {
 							const parsedTime = parseVtcLessonTime(cls.date, cls.lessonTime);
-							const classId = parsedTime
-								? buildCompositeEventId(course.courseCode, parsedTime.start, parsedTime.end)
-								: cls.id;
+							const classId = parsedTime ? buildCompositeEventId(course.courseCode, parsedTime.start, parsedTime.end) : cls.id;
 							const status = getAttendancePresence(cls);
 
 							totalConducted++;
@@ -652,8 +642,3 @@ export async function fetchTimetable(token: string, semesterNum: number = getCur
 		};
 	}
 }
-
-
-
-
-

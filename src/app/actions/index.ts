@@ -30,10 +30,13 @@ export {
 
 // ── Events ───────────────────────────────────────────
 export {
+	deleteEventsByDateRange,
 	finishCourseEarly,
 	getStoredEvents,
 	getUniqueCourses,
+	previewDeleteEventsByDateRange,
 	setEventStatus,
+	updateEventActualTimeAction,
 	updateEventDetails,
 } from "./events";
 

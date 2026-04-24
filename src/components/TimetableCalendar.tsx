@@ -191,9 +191,7 @@ export default function TimetableCalendar({
                                         )}
                                     </div>
                                     {event.resource?.isAdjusted && (
-                                        <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/75">
-                                            [Adjusted]
-                                        </div>
+                                        <span className="ml-1 text-[10px]" title="Manually adjusted">⚡</span>
                                     )}
                                     {event.resource?.location && (
                                         <div className="text-[10px] opacity-80 mt-0.5">

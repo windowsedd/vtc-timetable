@@ -71,7 +71,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 							discordUsername: user.name,
 							discordAvatar: user.image,
 						},
-						{ upsert: true, new: true },
+						{ upsert: true, returnDocument: 'after' },
 					);
 				} catch (error) {
 					console.error("Error saving user to database:", error);

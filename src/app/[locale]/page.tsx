@@ -244,11 +244,11 @@ export default function Home() {
         }
     };
 
-    const handleSync = async (url: string, semester: number) => {
+    const handleSync = async (url: string) => {
         setIsSyncing(true);
 
         try {
-            const result = await syncVtcData(url, semester);
+            const result = await syncVtcData(url);
 
             if (!result.success) {
                 throw new Error(result.error || "Failed to sync");
@@ -398,7 +398,19 @@ export default function Home() {
                             <label className="text-sm text-[var(--text-secondary)]">{tc("semester")}:</label>
                             <select
                                 value={semesterFilter}
-                                onChange={(e) => setSemesterFilter(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSemesterFilter(val);
+                                    const now = new Date();
+                                    if (val === "SEM 1") {
+                                        const year = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+                                        setDate(new Date(year, 8, 1));
+                                    } else if (val === "SEM 2") {
+                                        setDate(new Date(now.getFullYear(), 0, 1));
+                                    } else if (val === "SEM 3") {
+                                        setDate(new Date(now.getFullYear(), 4, 1));
+                                    }
+                                }}
                                 className="px-3 py-1.5 rounded-lg bg-[var(--calendar-header-bg)] border border-[var(--calendar-border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--calendar-today)]"
                             >
                                 <option value="all">{tc("allSemesters")}</option>
