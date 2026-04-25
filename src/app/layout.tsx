@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import { getLocale } from "next-intl/server";
@@ -11,6 +11,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: "/vtctimetable.svg", type: "image/svg+xml", sizes: "any" }],
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 // Root layout — owns <html> and <body> as required by Next.js 16.
