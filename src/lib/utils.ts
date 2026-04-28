@@ -94,6 +94,28 @@ export function autoSemesterToNum(label: "Sem 1" | "Sem 2" | "Summer"): number {
 export const getDefaultSemester = getCurrentSemester;
 
 /**
+ * Returns the list of semester numbers to sync for the current month.
+ * During transition months, includes the upcoming semester so users can
+ * pre-fetch the next semester's timetable before it officially starts.
+ *
+ * Dec      → [1, 2]  (Sem 1 active + Sem 2 lookahead)
+ * Apr–May  → [2, 3]  (Sem 2 active + Sem 3 lookahead)
+ * Aug      → [3, 1]  (Sem 3 active + next Sem 1 lookahead)
+ * Otherwise → strict current semester only
+ */
+export function getSemestersToSync(): number[] {
+    const month = new Date().getMonth() + 1;
+
+    if (month === 12) return [1, 2];
+    if (month >= 4 && month <= 5) return [2, 3];
+    if (month === 8) return [3, 1];
+
+    if (month >= 9 && month <= 11) return [1];
+    if (month >= 1 && month <= 3) return [2];
+    return [3];
+}
+
+/**
  * Get a human-friendly semester display label with month range.
  * e.g. 1 → "Semester 1 (Sep–Dec)", 2 → "Semester 2 (Jan–Apr)", 3 → "Summer (May–Aug)"
  */

@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { getColorIndex } from "@/lib/colors";
 import connectDB from "@/lib/db";
-import { getCurrentSemester } from "@/lib/utils";
+import { getCurrentSemester, getSemestersToSync } from "@/lib/utils";
 import Attendance, { IClassRecord } from "@/models/Attendance";
 import Event from "@/models/Event";
 import User from "@/models/User";
@@ -471,11 +471,23 @@ export async function autoSyncFromStoredToken(): Promise<{
 			return { success: false, error: "No stored VTC token found. Please sync manually first." };
 		}
 
-		// Step 3: Detect current semester dynamically
-		const semesterNum = getCurrentSemester();
+		// Step 3: Detect semesters to sync (includes lookahead during transition months)
+		const semesters = getSemestersToSync();
 
-		// Step 4: Call syncVtcData with stored token
-		return await syncVtcData(user.vtcToken, semesterNum);
+		// Step 4: Sync each semester and aggregate results
+		let newEvents = 0;
+		let newAttendance = 0;
+		let vtcStudentId: string | undefined;
+
+		for (const semesterNum of semesters) {
+			const result = await syncVtcData(user.vtcToken, semesterNum);
+			if (!result.success) return result;
+			newEvents += result.newEvents ?? 0;
+			newAttendance += result.newAttendance ?? 0;
+			vtcStudentId = result.vtcStudentId;
+		}
+
+		return { success: true, vtcStudentId, newEvents, newAttendance };
 	} catch (error) {
 		console.error("Error auto-syncing VTC data:", error);
 		return {
@@ -578,7 +590,18 @@ export async function checkAndSyncBackground(): Promise<{
 
 		if (diffHours >= 24) {
 			console.log("Background sync triggered for user:", session.user.discordId);
-			return await syncVtcData(user.vtcToken, getCurrentSemester());
+			const semesters = getSemestersToSync();
+			let newEvents = 0;
+			let newAttendance = 0;
+
+			for (const semesterNum of semesters) {
+				const result = await syncVtcData(user.vtcToken, semesterNum);
+				if (!result.success) return result;
+				newEvents += result.newEvents ?? 0;
+				newAttendance += result.newAttendance ?? 0;
+			}
+
+			return { success: true, newEvents, newAttendance };
 		}
 
 		return { success: true, message: "Sync not needed yet" };
