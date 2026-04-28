@@ -448,7 +448,7 @@ export async function syncVtcData(
  * Uses the stored VTC token from User database to sync data
  * Automatically detects semester based on current date
  */
-export async function autoSyncFromStoredToken(): Promise<{
+export async function autoSyncFromStoredToken(options?: { fetchAll?: boolean }): Promise<{
 	success: boolean;
 	error?: string;
 	vtcStudentId?: string;
@@ -471,8 +471,10 @@ export async function autoSyncFromStoredToken(): Promise<{
 			return { success: false, error: "No stored VTC token found. Please sync manually first." };
 		}
 
-		// Step 3: Detect semesters to sync (includes lookahead during transition months)
-		const semesters = getSemestersToSync();
+		// Step 3: Detect semesters to sync
+		// fetchAll = true: Full sync — fetch all 3 semesters (new users / forced refresh)
+		// fetchAll = false/undefined: Smart sync — only current/upcoming semesters
+		const semesters = options?.fetchAll ? [1, 2, 3] : getSemestersToSync();
 
 		// Step 4: Sync each semester and aggregate results
 		let newEvents = 0;

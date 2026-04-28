@@ -55,7 +55,7 @@ export default function Home() {
     const [showSignInModal, setShowSignInModal] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
     const [notification, setNotification] = useState<{
-        type: "success" | "error";
+        type: "success" | "error" | "loading";
         message: string;
     } | null>(null);
     const [showTokenExpiredWarning, setShowTokenExpiredWarning] = useState(false);
@@ -120,6 +120,8 @@ export default function Home() {
     }, [status]);
 
     // Auto-sync on login with 15-minute throttling
+    // New users (no events yet) get a full sync of all 3 semesters
+    // Existing users get a smart sync of current/upcoming semesters only
     useEffect(() => {
         const performAutoSync = async () => {
             if (status !== "authenticated") {
@@ -134,12 +136,17 @@ export default function Home() {
                     return;
                 }
 
+                // Detect new user: if they've never synced, fetch all semesters
+                const isNewUser = !syncCheck.lastSync;
+
                 setNotification({
-                    type: "success",
-                    message: t("backgroundUpdating"),
+                    type: "loading",
+                    message: isNewUser ? t("firstTimeSync") : t("backgroundUpdating"),
                 });
 
-                const result = await autoSyncFromStoredToken();
+                const result = await autoSyncFromStoredToken(
+                    isNewUser ? { fetchAll: true } : undefined
+                );
 
                 if (result.success) {
                     await loadStoredData();
@@ -194,44 +201,37 @@ export default function Home() {
         }
     };
 
-    // Handle refresh calendar from database
+    // Handle refresh calendar — forced full sync from VTC API (all 3 semesters)
+    // This is the "Refresh" button next to MY CALENDARS in the sidebar
     const handleRefreshCalendar = async () => {
         setIsRefreshingCalendar(true);
         try {
-            await loadStoredData();
+            setNotification({
+                type: "loading",
+                message: t("backgroundUpdating"),
+            });
 
-            if (events.length === 0) {
+            // Always do a full sync (all 3 semesters) when user manually clicks refresh
+            const result = await autoSyncFromStoredToken({ fetchAll: true });
+
+            if (result.success) {
+                await loadStoredData();
+                await fetchAttendance();
                 setNotification({
                     type: "success",
-                    message: t("dbEmpty"),
+                    message: t("autoSyncedEvents", { count: result.newEvents || 0 }),
                 });
-
-                const result = await autoSyncFromStoredToken();
-
-                if (result.success) {
-                    await loadStoredData();
-                    await fetchAttendance();
-                    setNotification({
-                        type: "success",
-                        message: t("autoSyncedEvents", { count: result.newEvents || 0 }),
-                    });
-                    setTimeout(() => setNotification(null), 3000);
-                } else {
-                    setNotification({
-                        type: "error",
-                        message: result.error || t("failedAutoSync"),
-                    });
-                    setTimeout(() => {
-                        setNotification(null);
-                        setShowSyncModal(true);
-                    }, 3000);
-                }
+                setTimeout(() => setNotification(null), 3000);
             } else {
+                // If no stored token, prompt user to sync manually
                 setNotification({
-                    type: "success",
-                    message: t("calendarRefreshed"),
+                    type: "error",
+                    message: result.error || t("failedAutoSync"),
                 });
-                setTimeout(() => setNotification(null), 2000);
+                setTimeout(() => {
+                    setNotification(null);
+                    setShowSyncModal(true);
+                }, 3000);
             }
         } catch (error) {
             setNotification({
@@ -244,14 +244,25 @@ export default function Home() {
         }
     };
 
+    // Manual sync via URL — always full sync (all 3 semesters)
+    // This is the SyncModal flow where a user pastes their VTC URL
     const handleSync = async (url: string) => {
         setIsSyncing(true);
 
         try {
-            const result = await syncVtcData(url);
+            // Full sync: iterate all 3 semesters to capture the complete academic year
+            let totalNewEvents = 0;
+            let totalNewAttendance = 0;
 
-            if (!result.success) {
-                throw new Error(result.error || "Failed to sync");
+            for (const semesterNum of [1, 2, 3]) {
+                const result = await syncVtcData(url, semesterNum);
+
+                if (!result.success) {
+                    throw new Error(result.error || "Failed to sync");
+                }
+
+                totalNewEvents += result.newEvents || 0;
+                totalNewAttendance += result.newAttendance || 0;
             }
 
             setVtcUrl(url);
@@ -262,7 +273,7 @@ export default function Home() {
 
             setNotification({
                 type: "success",
-                message: t("syncedEvents", { count: result.newEvents || 0, attendance: result.newAttendance || 0 }),
+                message: t("syncedEvents", { count: totalNewEvents, attendance: totalNewAttendance }),
             });
 
             setTimeout(() => setNotification(null), 3000);
@@ -481,47 +492,48 @@ export default function Home() {
 
                 {/* Notification Toast */}
                 {notification && (
-                    <div
-                        className={`absolute bottom-6 right-6 px-4 py-3 rounded-xl shadow-lg animate-slideIn ${notification.type === "success"
-                            ? "bg-green-500 text-white"
-                            : "bg-red-500 text-white"
-                            }`}
-                    >
-                        <div className="flex items-center gap-2">
-                            {notification.type === "success" ? (
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={2}
-                                    stroke="currentColor"
-                                    className="w-5 h-5"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="m4.5 12.75 6 6 9-13.5"
-                                    />
+                    notification.type === "loading" ? (
+                        /* ── Vercel-style dark sync pill ── */
+                        <div className="absolute bottom-6 right-6 z-50 animate-toast-enter">
+                            <div className="relative flex items-center gap-3 px-5 py-3 bg-[#0a0a0a] border border-[#222] rounded-full shadow-2xl overflow-hidden min-w-[240px]">
+                                {/* Animated Spinner */}
+                                <svg className="w-4 h-4 text-[#666] animate-spin shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                 </svg>
-                            ) : (
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={2}
-                                    stroke="currentColor"
-                                    className="w-5 h-5"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
-                                    />
-                                </svg>
-                            )}
-                            <span className="font-medium">{notification.message}</span>
+                                {/* Status Text */}
+                                <span className="text-sm font-medium text-[#d4d4d4] tracking-tight">
+                                    {notification.message}
+                                </span>
+                                {/* Indeterminate Bottom Loading Bar */}
+                                <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#222]">
+                                    <div className="h-full w-1/4 rounded-full bg-white/60 toast-loading-bar" />
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        /* ── Success / Error toast ── */
+                        <div
+                            className={`absolute bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg animate-toast-enter ${
+                                notification.type === "success"
+                                    ? "bg-[#0a0a0a] border border-[#222] text-[#3ecf8e]"
+                                    : "bg-[#0a0a0a] border border-[#222] text-[#f55353]"
+                            }`}
+                        >
+                            <div className="flex items-center gap-2.5">
+                                {notification.type === "success" ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 shrink-0">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                    </svg>
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 shrink-0">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                                    </svg>
+                                )}
+                                <span className="text-sm font-medium text-[#ededed]">{notification.message}</span>
+                            </div>
+                        </div>
+                    )
                 )}
             </main>
 

@@ -112,7 +112,10 @@ export function getSemestersToSync(): number[] {
 
     if (month >= 9 && month <= 11) return [1];
     if (month >= 1 && month <= 3) return [2];
-    return [3];
+    if (month >= 6 && month <= 7) return [3];
+
+    // Fallback: fetch all semesters if month is unresolved
+    return [1, 2, 3];
 }
 
 /**

@@ -115,6 +115,7 @@
     "enterUrlError": "請輸入 VTC 網址",
     "cancel": "取消",
     "backgroundUpdating": "正在背景更新課表...",
+    "firstTimeSync": "首次設定 — 正在匯入整個學年資料...",
     "updatedAutomatically": "課表已自動更新",
     "dbEmpty": "資料庫為空。正在自動從 VTC 同步...",
     "calendarRefreshed": "行事曆已重新整理",

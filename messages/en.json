@@ -115,6 +115,7 @@
     "enterUrlError": "Please enter a VTC URL",
     "cancel": "Cancel",
     "backgroundUpdating": "Updating schedule in background...",
+    "firstTimeSync": "First time setup — importing your full academic year...",
     "updatedAutomatically": "Schedule updated automatically",
     "dbEmpty": "Database empty. Auto-syncing from VTC...",
     "calendarRefreshed": "Calendar refreshed",
