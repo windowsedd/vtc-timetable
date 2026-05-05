@@ -46,6 +46,19 @@ export interface HybridAttendanceStats extends AttendanceStats {
     safeToSkipCount: number;
     safeToSkipMinutes: number;
     recoveryStatus: "safe" | "recoverable" | "failed" | "grace";
+    displaySemester?: string;
+    currentSemesterStats?: {
+        semester: string;
+        attended: number;
+        conductedClasses: number;
+        attendanceRate: number;
+    };
+    semesterBreakdowns?: Record<string, {
+        attended: number;
+        conductedClasses: number;
+        attendanceRate: number;
+        calendarTotalClasses: number;
+    }>;
 }
 
 export interface TimetableData {

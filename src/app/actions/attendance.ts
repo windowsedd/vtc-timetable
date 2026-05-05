@@ -326,6 +326,14 @@ export async function getStoredAttendance(): Promise<{
 	}
 }
 
+function getClassSemester(dateStr: string): string {
+	const parts = dateStr.split("/");
+	const month = parseInt(parts[1], 10);
+	if (month >= 9 && month <= 12) return "SEM 1";
+	if (month >= 1 && month <= 4) return "SEM 2";
+	return "SEM 3";
+}
+
 /**
  * Get hybrid attendance stats - combines Attendance API data with Calendar DB data
  * This gives us accurate totals including future classes
@@ -479,6 +487,59 @@ export async function getHybridAttendanceStats(): Promise<{
 					status: cls.status as "attended" | "late" | "absent",
 				}));
 
+				// Compute displaySemester: prefer semester from calendar events (matches MY CALENDARS grouping),
+				// fall back to latest class date, then stored semester
+				let displaySemester: string | undefined;
+				if (calendarEvents.length > 0) {
+					// Use semester of the latest calendar event (most current semester this course belongs to)
+					const latestEvent = calendarEvents.reduce((latest: any, ev: any) => {
+						return new Date(ev.startTime) > new Date(latest.startTime) ? ev : latest;
+					});
+					displaySemester = latestEvent.semester || undefined;
+				}
+				if (!displaySemester && classes.length > 0) {
+					const latestClass = classes.reduce((latest, cls) => {
+						const [dL, mL, yL] = latest.date.split("/").map(Number);
+						const [dC, mC, yC] = cls.date.split("/").map(Number);
+						return new Date(yC, mC - 1, dC) > new Date(yL, mL - 1, dL) ? cls : latest;
+					});
+					displaySemester = getClassSemester(latestClass.date);
+				}
+
+				// Per-semester breakdown from class records + calendar event counts
+				const semesterBreakdowns: HybridAttendanceStats["semesterBreakdowns"] = {};
+				for (const cls of classes) {
+					const sem = getClassSemester(cls.date);
+					if (!semesterBreakdowns[sem]) semesterBreakdowns[sem] = { attended: 0, conductedClasses: 0, attendanceRate: 0, calendarTotalClasses: 0 };
+					semesterBreakdowns[sem].conductedClasses++;
+					if (cls.status === "attended" || cls.status === "late") semesterBreakdowns[sem].attended++;
+				}
+				// Count calendar events per semester (creates entries for semesters with no class records yet)
+				for (const event of calendarEvents) {
+					const sem = (event as any).semester as string | undefined;
+					if (!sem) continue;
+					if (!semesterBreakdowns[sem]) semesterBreakdowns[sem] = { attended: 0, conductedClasses: 0, attendanceRate: 0, calendarTotalClasses: 0 };
+					semesterBreakdowns[sem].calendarTotalClasses++;
+				}
+				for (const sem of Object.keys(semesterBreakdowns)) {
+					const b = semesterBreakdowns[sem]!;
+					b.attendanceRate = b.conductedClasses > 0 ? Math.round((b.attended / b.conductedClasses) * 1000) / 10 : 0;
+				}
+
+				let currentSemesterStats: HybridAttendanceStats["currentSemesterStats"];
+				if (classes.length > 0) {
+					const targetSem = displaySemester || record.semester;
+					const currentSemClasses = classes.filter((cls) => getClassSemester(cls.date) === targetSem);
+					const semConducted = currentSemClasses.length;
+					const semAttended = currentSemClasses.filter((c) => c.status === "attended" || c.status === "late").length;
+					currentSemesterStats = {
+						semester: targetSem,
+						attended: semAttended,
+						conductedClasses: semConducted,
+						attendanceRate: semConducted > 0 ? Math.round((semAttended / semConducted) * 1000) / 10 : 0,
+					};
+				}
+
 				// Build hybrid stats object
 				const hybridStat: HybridAttendanceStats = {
 					// Original attendance fields
@@ -520,6 +581,9 @@ export async function getHybridAttendanceStats(): Promise<{
 					safeToSkipCount,
 					safeToSkipMinutes,
 					recoveryStatus,
+					displaySemester,
+					currentSemesterStats,
+					semesterBreakdowns,
 				};
 
 				return hybridStat;

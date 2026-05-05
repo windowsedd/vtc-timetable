@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { exportSemesterIcs, HybridAttendanceStats } from "@/app/actions";
 import { PASTEL_COLORS } from "@/lib/colors";
@@ -53,7 +53,7 @@ interface SidebarProps {
 	sidebarOpen?: boolean;
 }
 
-/** Calendar Tools — Vercel-style action card for dynamic semester export */
+/** Calendar Tools â€” Vercel-style action card for dynamic semester export */
 function CalendarToolsCard() {
 	const [isExporting, setIsExporting] = useState(false);
 	const [selectedSem, setSelectedSem] = useState(getDefaultSemester());
@@ -110,7 +110,7 @@ function CalendarToolsCard() {
 							<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
 							<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
 						</svg>
-						Exporting…
+						Exportingâ€¦
 					</>
 				) : (
 					<>
@@ -201,9 +201,9 @@ export default function Sidebar({ courses, events, attendance, onSyncClick, onRe
 		return Object.entries(groups).sort(([a], [b]) => (SEMESTER_ORDER[b] || 0) - (SEMESTER_ORDER[a] || 0)) as [string, { courses: CourseInfo[]; hasActive: boolean }][];
 	}, [courses]);
 
-	// Group attendance by semester and determine initial expand state
+	// Group attendance by semester â€” multi-semester courses appear in each semester they span
 	const groupedAttendance = useMemo(() => {
-		const groups: Record<string, { items: HybridAttendanceStats[]; hasActive: boolean }> = {};
+		const groups: Record<string, { items: { item: HybridAttendanceStats; viewSemester: string }[]; hasActive: boolean }> = {};
 
 		for (const item of attendance) {
 			// Skip follow-up courses (ending with 'A')
@@ -211,18 +211,20 @@ export default function Sidebar({ courses, events, attendance, onSyncClick, onRe
 				continue;
 			}
 
-			const sem = item.semester || "SEM 2";
-			if (!groups[sem]) {
-				groups[sem] = { items: [], hasActive: false };
-			}
-			groups[sem].items.push(item);
-			if (item.status === "ACTIVE") {
-				groups[sem].hasActive = true;
+			const breakdownSems = item.semesterBreakdowns ? Object.keys(item.semesterBreakdowns) : [];
+			const displaySem = item.displaySemester || item.semester || "SEM 2";
+			// Always include displaySemester (from calendar events) plus any semesters with actual class records
+			const sems = Array.from(new Set([displaySem, ...breakdownSems]));
+
+			for (const sem of sems) {
+				if (!groups[sem]) groups[sem] = { items: [], hasActive: false };
+				groups[sem].items.push({ item, viewSemester: sem });
+				if (item.status === "ACTIVE") groups[sem].hasActive = true;
 			}
 		}
 
 		// Sort by semester order (newest first)
-		return Object.entries(groups).sort(([a], [b]) => (SEMESTER_ORDER[b] || 0) - (SEMESTER_ORDER[a] || 0)) as [string, { items: HybridAttendanceStats[]; hasActive: boolean }][];
+		return Object.entries(groups).sort(([a], [b]) => (SEMESTER_ORDER[b] || 0) - (SEMESTER_ORDER[a] || 0)) as [string, { items: { item: HybridAttendanceStats; viewSemester: string }[]; hasActive: boolean }][];
 	}, [attendance]);
 
 	// Group events by semester for summary cards
@@ -357,6 +359,21 @@ export default function Sidebar({ courses, events, attendance, onSyncClick, onRe
 								<p className="text-sm text-[var(--text-tertiary)]">No attendance data. Sync your schedule first.</p>
 							) : (
 								<div className="space-y-2">
+									{/* Total Attendance Summary */}
+									{globalStats.hasActive && (
+										<div className="w-full py-2 px-3 rounded-lg bg-[rgba(0,0,0,0.03)] dark:bg-[rgba(255,255,255,0.04)] text-left">
+
+											<div className="flex items-center justify-between mb-1">
+												<span className="text-xs font-semibold text-[var(--text-secondary)]">Total Attendance</span>
+												<span className={`text-sm font-bold ${globalStats.colorClass}`}>{globalStats.currentRate.toFixed(1)}%</span>
+											</div>
+											<div className="w-full h-1 bg-[var(--calendar-border)] rounded-full overflow-hidden">
+												<div className={`h-full rounded-full transition-all duration-500 ${globalStats.bgClass}`} style={{ width: `${Math.min(globalStats.currentRate, 100)}%` }} />
+											</div>
+											<div className="text-[10px] text-[var(--text-tertiary)] mt-1">Max: {globalStats.maxPossibleRate.toFixed(0)}%</div>
+										</div>
+									)}
+
 									{groupedAttendance.map(([semester, data]) => {
 										const isExpanded = expandedAttendance[`att-${semester}`] ?? data.hasActive;
 										const isFinishedSemester = !data.hasActive;
@@ -373,49 +390,60 @@ export default function Sidebar({ courses, events, attendance, onSyncClick, onRe
 												{/* Semester Attendance */}
 												{isExpanded && (
 													<div className="ml-5 mt-1 space-y-1 animate-fadeIn">
-														{data.items.map((course) => {
-															const rate = course.minutesAttendanceRate ?? course.currentAttendanceRate ?? 0;
-															const maxRate = course.maxPossibleMinutesRate ?? course.maxPossibleRate ?? 100;
-															const attended = course.attended || 0;
-															const totalClasses = course.calendarTotalClasses || 0;
-															const isFinished = course.status === "FINISHED";
+														{data.items.map(({ item: course, viewSemester }) => {
+																		const breakdown = course.semesterBreakdowns?.[viewSemester];
+																		const breakdownSemCount = Object.keys(course.semesterBreakdowns || {}).length;
+																		// Multi-sem: 2+ breakdown sems, OR displaySemester differs from actual class semesters (e.g. enrolled SEM 3 but all classes in SEM 2)
+																		const isMultiSem = breakdownSemCount > 1 || (breakdownSemCount > 0 && course.displaySemester !== undefined && !course.semesterBreakdowns?.[course.displaySemester]);
+																		const rate = breakdown ? breakdown.attendanceRate : (isMultiSem ? 0 : (course.minutesAttendanceRate ?? course.currentAttendanceRate ?? 0));
+																		const maxRate = course.maxPossibleMinutesRate ?? course.maxPossibleRate ?? 100;
+																		const attendedCount = breakdown ? breakdown.attended : 0;
+																		const conductedCount = breakdown ? breakdown.conductedClasses : 0;
+																		const isFinished = course.status === "FINISHED";
+															const totalRate = course.minutesAttendanceRate ?? course.currentAttendanceRate ?? 0;
+																const totalMaxRate = course.maxPossibleMinutesRate ?? course.maxPossibleRate ?? 100;
 
-															return (
-																<button key={`${course.courseCode}-${course.semester}`} onClick={() => setSelectedCourse(course)} className={`w-full py-2 px-2 rounded-lg hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.05)] hover:-translate-y-px hover:shadow-sm active:translate-y-0 active:shadow-none transition-all text-left ${isFinished ? "opacity-60" : ""}`}>
-																	<div className="flex items-center justify-between mb-1">
-																		<span className="text-sm font-medium truncate flex-1">{course.courseCode}</span>
-																		<div className="flex items-center gap-1">
-																			{/* Recovery Status Badge */}
-																			{!isFinished && course.recoveryStatus === "recoverable" && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">Recoverable ⚠️</span>}
-																			{!isFinished && course.recoveryStatus === "failed" && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Failed ❌</span>}
-																			{course.isFollowUp && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">Follow-up</span>}
-																			{isFinished && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">Finished</span>}
+																return (
+																<div key={`${course.courseCode}-${viewSemester}`}>
+																	<button onClick={() => setSelectedCourse(course)} className={`w-full py-2 px-2 rounded-lg hover:bg-[rgba(0,0,0,0.03)] dark:hover:bg-[rgba(255,255,255,0.05)] hover:-translate-y-px hover:shadow-sm active:translate-y-0 active:shadow-none transition-all text-left ${isFinished ? "opacity-60" : ""}`}>
+																		<div className="flex items-center justify-between mb-1">
+																			<span className="text-sm font-medium truncate flex-1">{course.courseCode}</span>
+																			<div className="flex items-center gap-1">
+																				{isMultiSem && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">Mix</span>}
+																				{/* Recovery Status Badge */}
+																				{!isFinished && course.recoveryStatus === "recoverable" && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">Recoverable âš ï¸</span>}
+																				{!isFinished && course.recoveryStatus === "failed" && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Failed âŒ</span>}
+																				{course.isFollowUp && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">Follow-up</span>}
+																				{isFinished && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">Finished</span>}
+																			</div>
+																			<span className={`text-sm font-semibold ml-2 ${course.recoveryStatus === "grace" ? "text-yellow-500" : rate < 80 ? "text-red-500" : rate < 90 ? "text-yellow-500" : "text-green-500"}`}>
+																				{rate.toFixed(1)}%
+																			</span>
 																		</div>
-																		<span
-																			className={`text-sm font-semibold ml-2 ${
-																				// Grace period: use neutral yellow instead of alarming red
-																				course.recoveryStatus === "grace" ? "text-yellow-500" : rate < 80 ? "text-red-500" : rate < 90 ? "text-yellow-500" : "text-green-500"
-																			}`}
+																		<div className="w-full h-1.5 bg-[var(--calendar-border)] rounded-full overflow-hidden mb-1.5">
+																			<div
+																				className={`h-full rounded-full transition-all duration-500 ${rate < 80 ? "bg-red-500" : rate < 90 ? "bg-yellow-500" : "bg-green-500"}`}
+																				style={{ width: `${Math.min(rate, 100)}%`, filter: isFinished ? "grayscale(50%)" : "none" }}
+																			/>
+																		</div>
+																		<div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+																			<span>{attendedCount} / {breakdown ? breakdown.calendarTotalClasses : 0} classes</span>
+																			{!isMultiSem && <span className="text-gray-400">Max: {maxRate.toFixed(0)}%</span>}
+																		</div>
+																	</button>
+																	{/* Total button for multi-semester courses */}
+																	{isMultiSem && (
+																		<button
+																			onClick={() => setSelectedCourse(course)}
+																			className="w-full mt-0.5 py-1 px-2 rounded-md flex items-center justify-between text-[10px] bg-[rgba(0,0,0,0.03)] dark:bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(0,0,0,0.06)] dark:hover:bg-[rgba(255,255,255,0.07)] transition-colors text-[var(--text-tertiary)]"
 																		>
-																			{rate.toFixed(1)}%
-																		</span>
-																	</div>
-																	<div className="w-full h-1.5 bg-[var(--calendar-border)] rounded-full overflow-hidden mb-1.5">
-																		<div
-																			className={`h-full rounded-full transition-all duration-500 ${rate < 80 ? "bg-red-500" : rate < 90 ? "bg-yellow-500" : "bg-green-500"}`}
-																			style={{
-																				width: `${Math.min(rate, 100)}%`,
-																				filter: isFinished ? "grayscale(50%)" : "none",
-																			}}
-																		/>
-																	</div>
-																	<div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
-																		<span>
-																			{attended} / {totalClasses} classes
-																		</span>
-																		<span className="text-gray-400">Max: {maxRate.toFixed(0)}%</span>
-																	</div>
-																</button>
+																			<span className="font-medium">Total</span>
+																			<span className={`font-semibold ${totalRate < 80 ? "text-red-500" : totalRate < 90 ? "text-yellow-500" : "text-green-500"}`}>
+																				{totalRate.toFixed(1)}% &nbsp;Â·&nbsp; Max {totalMaxRate.toFixed(0)}%
+																			</span>
+																		</button>
+																	)}
+																</div>
 															);
 														})}
 													</div>
@@ -457,7 +485,7 @@ export default function Sidebar({ courses, events, attendance, onSyncClick, onRe
 						)}
 					</button>
 
-					{/* Calendar Tools — Dynamic Export */}
+					{/* Calendar Tools â€” Dynamic Export */}
 					{groupedCourses.length > 0 && <CalendarToolsCard />}
 
 					{/* Calendar Subscription - auto-detects current semester */}

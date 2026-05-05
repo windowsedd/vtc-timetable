@@ -10,7 +10,7 @@ import User from "@/models/User";
 import { TimetableEvent } from "@/types/timetable";
 import { revalidatePath } from "next/cache";
 import { API } from "../../../vtc-api/src/core/api";
-import { buildCompositeEventId, extractToken, getAttendancePresence, getDurationInMinutes, parseVtcLessonTime, SEMESTER_CATEGORY_MAP, SEMESTER_END_DATES, SEMESTER_MAP, SEMESTER_ORDER_MAP } from "./_helpers";
+import { buildCompositeEventId, extractToken, getAttendancePresence, getDurationInMinutes, parseVtcLessonTime, SEMESTER_CATEGORY_MAP, SEMESTER_END_DATES, SEMESTER_MAP } from "./_helpers";
 import type { VtcApiResponse } from "./types";
 
 type UpsertAttendanceEventInput = {
@@ -314,20 +314,7 @@ export async function syncVtcData(
 		const results = await Promise.all(fetchPromises);
 		newEventsCount = results.reduce((sum, count) => sum + count, 0);
 
-		// Use the primary semester as fallback for attendance tagging
-		const fallbackSemester = primarySemester;
-
-		// Step 6: Fetch and save Attendance with both IDs
-		// First, build a map of courseCode -> semester from Calendar events
-		const courseToSemesterMap: Record<string, string> = {};
-		const existingEventsAll = await Event.find({ vtcStudentId }).select("courseCode semester").lean();
-		for (const event of existingEventsAll) {
-			// Use the most recent semester for each course (in case of duplicates)
-			if (!courseToSemesterMap[event.courseCode] || (SEMESTER_ORDER_MAP[event.semester] || 0) > (SEMESTER_ORDER_MAP[courseToSemesterMap[event.courseCode]] || 0)) {
-				courseToSemesterMap[event.courseCode] = event.semester;
-			}
-		}
-
+		// Step 6: Fetch and save Attendance
 		const listResponse = await api.getClassAttendanceList();
 		let newAttendanceCount = 0;
 
@@ -336,7 +323,6 @@ export async function syncVtcData(
 
 			const attendanceOps = await Promise.all(
 				courses.map(async (course) => {
-					const courseSemester = (courseToSemesterMap[course.courseCode] || fallbackSemester) as "SEM 1" | "SEM 2" | "SEM 3";
 					const detailResponse = await api.getClassAttendanceDetail(course.courseCode);
 
 					let attended = 0;
@@ -370,7 +356,25 @@ export async function syncVtcData(
 								actualDuration: parsedTime?.duration,
 								status,
 							});
+						}
+					}
 
+					// Derive semester from earliest class date (mirrors attendance.ts logic).
+					// Prevents cross-semester bleed when the API returns courses from multiple semesters.
+					let courseSemester: "SEM 1" | "SEM 2" | "SEM 3" = primarySemester;
+					if (classRecords.length > 0) {
+						const dateParts = classRecords[0].date.split("/");
+						if (dateParts.length === 3) {
+							const month = parseInt(dateParts[1], 10);
+							if (month >= 9 && month <= 12) courseSemester = "SEM 1";
+							else if (month >= 1 && month <= 4) courseSemester = "SEM 2";
+							else courseSemester = "SEM 3";
+						}
+					}
+
+					// Upsert adjusted calendar events now that semester is known
+					if (detailResponse.isSuccess && detailResponse.payload?.classes) {
+						for (const cls of detailResponse.payload.classes) {
 							await upsertAttendanceAdjustedEvent({
 								cls,
 								vtcStudentId,
@@ -425,6 +429,25 @@ export async function syncVtcData(
 				const result = await Attendance.bulkWrite(attendanceOps);
 				newAttendanceCount = result.upsertedCount;
 			}
+
+			// Remove stale Attendance records where the semester was mis-tagged in a previous sync.
+			// Build a map of courseCode -> correct semester from the ops we just wrote.
+			const correctSemesterMap: Record<string, string> = {};
+			for (const op of attendanceOps) {
+				if ("updateOne" in op) {
+					const { courseCode, semester } = op.updateOne.filter as { courseCode: string; semester: string };
+					correctSemesterMap[courseCode] = semester;
+				}
+			}
+			const staleDeleteOps = Object.entries(correctSemesterMap).map(([courseCode, correctSemester]) => ({
+				deleteMany: {
+					filter: { vtcStudentId, courseCode, semester: { $ne: correctSemester } },
+				},
+			}));
+			if (staleDeleteOps.length > 0) {
+				await Attendance.bulkWrite(staleDeleteOps);
+			}
+
 		}
 
 		revalidatePath("/");
