@@ -245,6 +245,13 @@
     "finishCourseEarlyConfirm": "確定要提前完成此課程嗎？所有未來課堂將被標記為「已完成」。",
     "finishCourseEarlyHint": "此操作會將此課程所有未來課堂標記為已完成。",
     "markAbsentBtn": "缺席",
+    "close": "關閉",
+    "manuallyAdjusted": "手動調整",
+    "startTime": "開始時間",
+    "endTime": "結束時間",
+    "durationMinute": "{minutes} 分鐘",
+    "durationHour": "{hours} 小時",
+    "durationHourMinute": "{hours} 小時 {minutes} 分鐘",
     "markPresentBtn": "出席"
   },
   "sync": {
@@ -573,11 +580,13 @@
   "apiDocs": {
     "eyebrow": "開發者參考",
     "title": "課堂 API",
-    "subtitle": "讓 iOS 小工具、快捷指令或任何可傳送 HTTP 標頭的應用讀取你的上課時間。",
+    "subtitle": "讓 iOS 小工具、快捷指令或任何能讀取網址的工具取得你的上課時間。",
     "authTitle": "身份驗證",
     "authBody": "每個請求都要在 Authorization 標頭帶上個人權杖。因為小工具無法保持瀏覽器登入狀態，所以沒有 cookie 或登入流程。",
     "requestLabel": "請求",
     "tokenLink": "到設定建立權杖 →",
+    "authQuery": "\u5982\u679c\u4f60\u7684\u5ba2\u6236\u7aef\u7121\u6cd5\u8a2d\u5b9a\u6a19\u982d\uff08\u4f8b\u5982\u5feb\u6377\u6307\u4ee4\u6216\u53ea\u63a5\u53d7\u7db2\u5740\u7684\u5c0f\u5de5\u5177\uff09\uff0c\u53ef\u4ee5\u6539\u7528 `token` \u67e5\u8a62\u53c3\u6578\u50b3\u9001\u540c\u4e00\u6b0a\u6756\u3002\u7db2\u5740\u6703\u88ab\u4f3a\u670d\u5668\u65e5\u8a8c\u3001\u700f\u89bd\u7d00\u9304\u548c\u4ee3\u7406\u4f3a\u670d\u5668\u8a18\u9304\uff0c\u80fd\u7528\u6a19\u982d\u5c31\u5118\u91cf\u7528\u6a19\u982d\u3002",
+    "urlLabel": "\u7db2\u5740\u5beb\u6cd5",
     "requestTitle": "查詢參數",
     "rangeLimit": "兩者都以香港日期計算，每次最多可查詢 {days} 天。",
     "responseTitle": "回應",

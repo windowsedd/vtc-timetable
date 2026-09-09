@@ -1,4 +1,4 @@
-import { bearerToken, isValidApiToken } from "@/lib/api-token";
+import { apiTokenFromRequest, isValidApiToken } from "@/lib/api-token";
 import { buildClassesPayload, MAX_RANGE_DAYS, resolveClassRange, type ClassRangeError } from "@/lib/classes-api";
 import connectDB from "@/lib/db";
 import Event from "@/models/Event";
@@ -43,11 +43,13 @@ function unauthorized(message: string) {
 }
 
 export async function GET(request: NextRequest) {
-	const token = bearerToken(request.headers.get("authorization"));
-	if (!token) return unauthorized("Send your API token as `Authorization: Bearer <token>`.");
+	const { searchParams } = new URL(request.url);
+	const token = apiTokenFromRequest(request.headers.get("authorization"), searchParams.get("token"));
+	if (!token) {
+		return unauthorized("Send your API token as `Authorization: Bearer <token>`, or as a `token` query parameter.");
+	}
 	if (!isValidApiToken(token)) return unauthorized("That API token is not valid.");
 
-	const { searchParams } = new URL(request.url);
 	const now = new Date();
 	const resolved = resolveClassRange(searchParams.get("from"), searchParams.get("to"), now);
 	if ("error" in resolved) {

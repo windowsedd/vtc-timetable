@@ -43,14 +43,14 @@ export default function AppShell({ children, footer }: AppShellProps) {
 
 
 	return (
-		<div className="dashboard-shell h-screen flex flex-col bg-background overflow-hidden">
+		<div className="dashboard-shell h-screen flex flex-col bg-background overflow-clip">
 			<TopNavbar
 				onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
 				sidebarOpen={sidebarOpen}
 				user={session?.user}
 			/>
 
-			<div className="flex-1 flex overflow-hidden">
+			<div className="flex-1 flex min-h-0 overflow-clip">
 				<button
 					type="button"
 					className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`}

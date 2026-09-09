@@ -3661,12 +3661,18 @@ body {
 .sidebar-heading {
 	padding: 20px 20px 0;
 }
-/* Persistent pill navigation, adapted from the reference sidebar. */
+/* Persistent pill navigation, adapted from the reference sidebar. The rail is
+   clipped, so on a short window the links scroll here rather than pushing the
+   sync button out of sight. */
 .sidebar-nav {
 	display: flex;
+	flex: 1;
+	min-height: 0;
 	flex-direction: column;
 	gap: 6px;
 	padding: 24px 20px 8px;
+	overflow-y: auto;
+	overscroll-behavior: contain;
 }
 
 .sidebar-nav-link {
@@ -5225,6 +5231,251 @@ body {
 
 .next-class-countdown {
 	background: color-mix(in srgb, var(--accent-fg) 22%, transparent) !important;
+}
+
+/* ============================================
+   CLASS DETAIL SHEET
+   The class as a run on its course's line: two stops, the time between
+   them, and the facts that do not change underneath.
+   ============================================ */
+
+.class-modal {
+	position: relative;
+	overflow: hidden;
+	padding: 30px 26px 24px;
+}
+
+.class-modal-line {
+	position: absolute;
+	inset: 0 0 auto;
+	height: 4px;
+	background: var(--class-line);
+}
+
+.class-modal-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 14px;
+}
+
+.class-modal-header h2 {
+	font-family: var(--font-display);
+	font-size: 20px;
+	font-weight: 900;
+	letter-spacing: -0.02em;
+	line-height: 1.15;
+}
+
+.class-modal-header p {
+	margin-top: 3px;
+	color: var(--text-secondary);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.class-modal-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 12px;
+}
+
+.class-modal-status,
+.class-modal-chip {
+	padding: 3px 10px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+}
+
+.class-modal-status.is-upcoming { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.class-modal-status.is-finished { background: var(--bg-overlay); color: var(--text-secondary); }
+.class-modal-status.is-canceled,
+.class-modal-status.is-absent { background: color-mix(in srgb, var(--error) 15%, transparent); color: var(--error); }
+.class-modal-status.is-rescheduled { background: color-mix(in srgb, var(--accent-blue) 15%, transparent); color: var(--accent-blue); }
+
+.class-modal-chip {
+	border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+	background: color-mix(in srgb, var(--warning) 12%, transparent);
+	color: var(--warning);
+}
+
+.class-modal-run { margin-top: 22px; }
+
+.class-modal-day {
+	color: var(--text-tertiary);
+	font-size: 10px;
+	font-weight: 750;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.class-modal-rail {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-top: 10px;
+}
+
+.class-modal-time {
+	color: var(--foreground);
+	font-family: var(--font-mono);
+	font-size: clamp(17px, 4.6vw, 21px);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+}
+
+/* The run between the two stops. The rule is a background so the duration
+   can sit on top of it with the surface colour behind. */
+.class-modal-track {
+	position: relative;
+	display: grid;
+	flex: 1;
+	min-width: 56px;
+	height: 22px;
+	place-items: center;
+	background: linear-gradient(color-mix(in srgb, var(--class-line) 45%, transparent) 0 0) center / 100% 2px no-repeat;
+}
+
+.class-modal-track::before,
+.class-modal-track::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	width: 9px;
+	height: 9px;
+	margin-top: -4.5px;
+	border-radius: 999px;
+	background: var(--class-line);
+}
+
+.class-modal-track::before { left: 0; }
+.class-modal-track::after { right: 0; }
+
+.class-modal-track em {
+	position: relative;
+	padding: 0 8px;
+	background: var(--bg-surface);
+	color: var(--text-tertiary);
+	font-family: var(--font-mono);
+	font-size: 11px;
+	font-style: normal;
+	font-variant-numeric: tabular-nums;
+}
+
+.class-modal-time-input {
+	min-width: 0;
+	padding: 6px 10px;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-lg);
+	background: var(--background);
+	color: var(--foreground);
+	font-family: var(--font-mono);
+	font-size: 15px;
+	font-variant-numeric: tabular-nums;
+}
+
+.class-modal-facts {
+	display: grid;
+	margin-top: 20px;
+}
+
+.class-modal-facts > div {
+	display: grid;
+	grid-template-columns: 92px minmax(0, 1fr);
+	gap: 14px;
+	align-items: baseline;
+	padding: 11px 0;
+	border-top: 1px solid var(--border-subtle);
+}
+
+.class-modal-facts dt {
+	color: var(--text-tertiary);
+	font-size: 10px;
+	font-weight: 750;
+	letter-spacing: 0.09em;
+	text-transform: uppercase;
+}
+
+.class-modal-facts dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.class-modal-actions {
+	display: grid;
+	gap: 10px;
+	margin-top: 22px;
+}
+
+.class-modal-action-row {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px;
+}
+
+.class-modal-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	padding: 10px 14px;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-lg);
+	background: transparent;
+	color: var(--text-secondary);
+	font: inherit;
+	font-size: 13px;
+	font-weight: 650;
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.class-modal-btn svg { width: 14px; height: 14px; flex: none; }
+.class-modal-btn:hover:not(:disabled) { background: var(--highlight); color: var(--foreground); }
+.class-modal-btn:disabled { opacity: 0.5; cursor: default; }
+.class-modal-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.class-modal-btn.is-primary {
+	border-color: transparent;
+	background: var(--accent);
+	color: var(--accent-fg);
+}
+.class-modal-btn.is-primary:hover:not(:disabled) { background: var(--accent); opacity: 0.92; color: var(--accent-fg); }
+
+.class-modal-btn.is-danger { border-color: color-mix(in srgb, var(--error) 30%, transparent); color: var(--error); }
+.class-modal-btn.is-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--error) 12%, transparent); color: var(--error); }
+
+.class-modal-btn.is-warning { border-color: color-mix(in srgb, var(--warning) 30%, transparent); color: var(--warning); }
+.class-modal-btn.is-warning:hover:not(:disabled) { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); }
+
+.class-modal-btn.is-positive { border-color: color-mix(in srgb, var(--success) 30%, transparent); color: var(--success); }
+.class-modal-btn.is-positive:hover:not(:disabled) { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+
+/* Course-wide action, kept away from the two that touch one class. */
+.class-modal-danger {
+	display: grid;
+	margin-top: 6px;
+	padding-top: 14px;
+	border-top: 1px solid var(--border-subtle);
+}
+
+.class-modal-danger p {
+	margin-top: 8px;
+	color: var(--text-tertiary);
+	font-size: 11px;
+	line-height: 1.5;
+	text-align: center;
+}
+
+@media (max-width: 420px) {
+	.class-modal { padding: 26px 18px 20px; }
+	.class-modal-facts > div { grid-template-columns: 76px minmax(0, 1fr); gap: 10px; }
 }
 
 /* ============================================

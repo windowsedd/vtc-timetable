@@ -40,6 +40,8 @@ const RESPONSE_SAMPLE = `{
   "classes": [ { "courseCode": "ITP4501", "...": "..." } ]
 }`;
 
+const URL_SAMPLE = `https://vtc.windowsed.me/api/classes?token=vtct_your_token_here&from=2026-09-09`;
+
 const CURL_SAMPLE = `curl -H "Authorization: Bearer $VTC_TOKEN" \\
   "https://vtc.windowsed.me/api/classes?from=2026-09-09&to=2026-09-16"`;
 
@@ -109,6 +111,8 @@ export default async function ClassesApiDocsPage() {
 					<h2>{t("authTitle")}</h2>
 					<p>{t("authBody")}</p>
 					<CodeBlock label={t("requestLabel")} code={REQUEST_SAMPLE} />
+					<p className="api-docs-note">{t("authQuery")}</p>
+					<CodeBlock label={t("urlLabel")} code={URL_SAMPLE} />
 					<Link href="/settings#api" className="api-docs-link">{t("tokenLink")}</Link>
 				</section>
 

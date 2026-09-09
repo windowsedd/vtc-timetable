@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { bearerToken, createApiToken, isValidApiToken, maskApiToken } from "./api-token";
+import { apiTokenFromRequest, bearerToken, createApiToken, isValidApiToken, maskApiToken } from "./api-token";
 import { buildClassesPayload, dayKey, resolveClassRange, toApiClass } from "./classes-api";
 
 // 2026-09-09 10:30 Hong Kong time.
@@ -34,6 +34,14 @@ describe("api tokens", () => {
 		expect(isValidApiToken("vtct_short")).toBe(false);
 		expect(isValidApiToken(`vtct_${"a".repeat(33)}`)).toBe(false);
 		expect(maskApiToken("nope")).toBe("");
+	});
+
+	test("falls back to the query token, but the header wins", () => {
+		expect(apiTokenFromRequest(null, "vtct_query")).toBe("vtct_query");
+		expect(apiTokenFromRequest("Bearer vtct_header", "vtct_query")).toBe("vtct_header");
+		expect(apiTokenFromRequest("Basic nope", "vtct_query")).toBe("vtct_query");
+		expect(apiTokenFromRequest(null, "   ")).toBeNull();
+		expect(apiTokenFromRequest(null, null)).toBeNull();
 	});
 
 	test("reads the bearer scheme however the client capitalises it", () => {

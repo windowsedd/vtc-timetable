@@ -504,7 +504,7 @@ export default function AuthenticatedHome({ mode = "home" }: AuthenticatedHomePr
             />
 
             {/* Body: Sidebar + Main */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex min-h-0 overflow-clip">
             {/* Mobile overlay */}
             <div
                 className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`}

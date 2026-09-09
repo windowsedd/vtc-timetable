@@ -30,6 +30,19 @@ export function bearerToken(header: string | null | undefined): string | null {
 	return match ? match[1] : null;
 }
 
+/**
+ * The token for a request: the Authorization header first, then a `token`
+ * query parameter for clients that cannot set headers. A token in a URL is
+ * recorded by server logs, browser history and any proxy on the way, so the
+ * header stays the documented default.
+ */
+export function apiTokenFromRequest(
+	header: string | null | undefined,
+	queryToken: string | null | undefined,
+): string | null {
+	return bearerToken(header) ?? (queryToken?.trim() || null);
+}
+
 /** Shows the first and last characters only, for the settings panel and logs. */
 export function maskApiToken(token: string): string {
 	if (!isValidApiToken(token)) return "";

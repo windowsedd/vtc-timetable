@@ -245,6 +245,13 @@
     "finishCourseEarlyConfirm": "Are you sure you want to finish this course early? All future classes will be marked as FINISHED.",
     "finishCourseEarlyHint": "This will mark ALL future sessions of this course as finished.",
     "markAbsentBtn": "Absent",
+    "close": "Close",
+    "manuallyAdjusted": "Manually adjusted",
+    "startTime": "Start time",
+    "endTime": "End time",
+    "durationMinute": "{minutes} min",
+    "durationHour": "{hours} hr",
+    "durationHourMinute": "{hours} hr {minutes} min",
     "markPresentBtn": "Present"
   },
   "sync": {
@@ -573,11 +580,13 @@
   "apiDocs": {
     "eyebrow": "Developer reference",
     "title": "Classes API",
-    "subtitle": "Read your class times from an iOS widget, a Shortcut, or any app that can send an HTTP header.",
+    "subtitle": "Read your class times from an iOS widget, a Shortcut, or anything that can fetch a URL.",
     "authTitle": "Authentication",
     "authBody": "Every request carries a personal token in the Authorization header. There is no cookie or sign-in flow, because a widget extension cannot hold a browser session.",
     "requestLabel": "Request",
     "tokenLink": "Create your token in Settings →",
+    "authQuery": "If your client cannot set headers \u2014 a Shortcut, a widget that only takes a URL \u2014 pass the same token as a `token` query parameter. URLs are kept by server logs, browser history and proxies, so use the header wherever you can.",
+    "urlLabel": "URL form",
     "requestTitle": "Query parameters",
     "rangeLimit": "Both are Hong Kong calendar days, and a range may cover at most {days} days.",
     "responseTitle": "Response",

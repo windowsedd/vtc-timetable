@@ -351,14 +351,14 @@ export default function SettingsPage() {
 	};
 
 	return (
-		<div className="settings-page flex flex-col h-screen overflow-hidden bg-[var(--background)]">
+		<div className="settings-page flex flex-col h-screen overflow-clip bg-[var(--background)]">
 			<TopNavbar
 				onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
 				sidebarOpen={sidebarOpen}
 				user={session?.user}
 			/>
 
-			<div className="flex-1 flex overflow-hidden">
+			<div className="flex-1 flex min-h-0 overflow-clip">
 			<button
 				type="button"
 				className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`}
