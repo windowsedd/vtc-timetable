@@ -2,7 +2,6 @@
 
 import { Link, usePathname } from "@/lib/navigation";
 import { BookOpen, CalendarClock, CalendarCog, CalendarDays, ClipboardCheck, HelpCircle, LayoutGrid, Loader2, RefreshCw, Settings, Table2 } from "lucide-react";
-import Image from "next/image";
 import { useTranslations } from "next-intl";
 
 // Persistent sidebar navigation. lucide-react, one family, size-5 in the rail.
@@ -69,7 +68,7 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 				{/* Brand — the desktop shell's only logo lockup. */}
 				<div className="sidebar-heading">
 					<Link href="/" className="sidebar-brand">
-						<Image src="/vtc-timetable.svg" alt="" width={44} height={44} aria-hidden="true" />
+						<img src="/vtc-timetable.svg" alt="" width={44} height={44} aria-hidden="true" />
 						<span className="min-w-0">
 							<span className="sidebar-brand-title">VTC Timetable</span>
 							<span className="sidebar-brand-subtitle">{t("calendarHeader")}</span>

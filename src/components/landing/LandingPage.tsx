@@ -3,7 +3,6 @@
 import SignInModal from "@/components/SignInModal";
 import TutorialSimulation from "@/components/TutorialSimulation";
 import { useTranslations } from "next-intl";
-import Image from "next/image";
 import { useState } from "react";
 import LandingCTA from "./LandingCTA";
 import LandingFeatures from "./LandingFeatures";
@@ -24,7 +23,7 @@ export default function LandingPage() {
 			<header className="landing-nav">
 				<div className="landing-nav-inner">
 					<span className="landing-brand">
-						<Image src="/vtc-timetable.svg" alt="" width={40} height={40} priority />
+						<img src="/vtc-timetable.svg" alt="" width={40} height={40} fetchPriority="high" />
 						<span>
 							<strong>VTC Timetable</strong>
 							<small>Vocational Training Council</small>

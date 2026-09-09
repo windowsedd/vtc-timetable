@@ -1,7 +1,6 @@
 "use client";
 
 import { splashProgress } from "@/lib/splash-loading";
-import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
@@ -32,12 +31,16 @@ export default function SessionSplash({ label }: SessionSplashProps) {
 			<div className="session-splash">
 				<div className="session-splash-mark">
 					<span className="session-splash-ring" aria-hidden="true" />
-					<Image
+					{/* A plain <img>: next/image throws while server-rendering this,
+					    and the splash is the only thing SSR renders on every route
+					    that waits for a session. The mark is an SVG, so there is
+					    nothing for the optimiser to do anyway. */}
+					<img
 						src="/vtc-timetable.svg"
 						alt=""
 						width={80}
 						height={80}
-						priority
+						fetchPriority="high"
 						className="session-splash-logo"
 					/>
 				</div>

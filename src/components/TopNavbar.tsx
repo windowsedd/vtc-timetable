@@ -1,7 +1,6 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
-import Image from "next/image";
 import UserDropdown from "./UserDropdown";
 
 interface TopNavbarProps {
@@ -25,7 +24,7 @@ export default function TopNavbar({ onSidebarToggle, sidebarOpen, user }: TopNav
 				</button>
 
 				<div className="top-navbar-brand">
-					<Image src="/vtc-timetable.svg" alt="" width={34} height={34} className="top-navbar-logo" priority />
+					<img src="/vtc-timetable.svg" alt="" width={34} height={34} className="top-navbar-logo" fetchPriority="high" />
 					<div className="min-w-0">
 						<span className="top-navbar-title hidden sm:block">VTC Timetable</span>
 						<span className="top-navbar-title sm:hidden">Timetable</span>
