@@ -11,6 +11,8 @@ export interface IUser extends Document {
 	vtcToken?: string;
 	vtcStudentId?: string;
 	calendarShareToken?: string;
+	/** Bearer token for the read-only classes API (iOS widget). */
+	apiToken?: string;
 	attendanceGracePeriod: number; // Minutes
 	/** Optional passing-rate override in percent. Unset means the shared default of 80. */
 	gracePeriodThreshold?: number;
@@ -56,6 +58,12 @@ const UserSchema = new Schema<IUser>(
 			index: true,
 		},
 		calendarShareToken: {
+			type: String,
+			unique: true,
+			sparse: true,
+			index: true,
+		},
+		apiToken: {
 			type: String,
 			unique: true,
 			sparse: true,

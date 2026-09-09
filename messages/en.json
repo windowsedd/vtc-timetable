@@ -24,7 +24,13 @@
     "error": "Error",
     "success": "Success",
     "refresh": "Refresh",
-    "noData": "No data available"
+    "noData": "No data available",
+    "loadingElapsed": "{seconds}s",
+    "splashStage": {
+      "session": "Checking your session",
+      "workspace": "Loading your workspace",
+      "slow": "Still loading — the server is taking longer than usual"
+    }
   },
   "auth": {
     "welcomeBack": "Welcome Back",
@@ -143,6 +149,7 @@
     "safe": "Safe",
     "recoverable": "Recoverable",
     "failed": "Failed",
+    "entryCourse": "Course",
     "followUp": "Follow-up",
     "finished": "Finished",
     "noClassRecords": "No class records available",
@@ -323,6 +330,22 @@
     "loginSecurityDescription": "Manage email and password login.",
     "storedData": "Stored Data",
     "storedDataDescription": "Manage synchronized timetable and attendance data.",
+    "loadingSettings": "Loading your settings",
+    "apiAccess": "API access",
+    "apiAccessDescription": "A read-only token for the iOS widget and other apps that read your class times.",
+    "apiToken": "API token",
+    "apiTokenNone": "No token yet",
+    "apiTokenCreate": "Create token",
+    "apiTokenRegenerate": "Regenerate",
+    "apiTokenRevoke": "Revoke",
+    "apiTokenCopy": "Copy",
+    "apiTokenCopied": "Copied",
+    "apiTokenCopyFailed": "Could not copy the token.",
+    "apiTokenReveal": "Show token",
+    "apiTokenHide": "Hide token",
+    "apiTokenHint": "Send it as an Authorization: Bearer header to {endpoint}. Regenerating signs out every device using the old token.",
+    "apiTokenDocs": "Read the API docs →",
+    "apiTokenWarning": "Anyone holding this token can read your class times. Do not share it.",
     "backToCalendar": "Back to Calendar",
     "theme": "Theme",
     "light": "Light",
@@ -540,7 +563,56 @@
     "nextClassInMinutes": "in {count} min",
     "nextClassInHours": "in {count} h",
     "nextClassInDays": "in {count} d",
+    "inClassLabel": "In class now",
+    "inClassEn": "In class now",
+    "classMinutesLeft": "{count} min left",
+    "classProgressLabel": "Progress through this class",
+    "nextClassProgressLabel": "Time until the next class",
     "viewClass": "View class"
+  },
+  "apiDocs": {
+    "eyebrow": "Developer reference",
+    "title": "Classes API",
+    "subtitle": "Read your class times from an iOS widget, a Shortcut, or any app that can send an HTTP header.",
+    "authTitle": "Authentication",
+    "authBody": "Every request carries a personal token in the Authorization header. There is no cookie or sign-in flow, because a widget extension cannot hold a browser session.",
+    "requestLabel": "Request",
+    "tokenLink": "Create your token in Settings →",
+    "requestTitle": "Query parameters",
+    "rangeLimit": "Both are Hong Kong calendar days, and a range may cover at most {days} days.",
+    "responseTitle": "Response",
+    "responseLabel": "200 OK",
+    "errorsTitle": "Errors",
+    "examplesTitle": "Examples",
+    "swiftLabel": "Swift (WidgetKit)",
+    "widgetNote": "Fetch in your TimelineProvider and build entries from the returned classes; the response already tells you which class is running and which is next.",
+    "backHome": "Back to the calendar",
+    "manageToken": "Manage your token",
+    "params": {
+      "from": "First day to include, as YYYY-MM-DD.",
+      "fromDefault": "Today",
+      "to": "Last day to include, counted in full.",
+      "toDefault": "Seven days after the first day"
+    },
+    "table": {
+      "parameter": "Parameter",
+      "description": "Description",
+      "fallback": "When omitted",
+      "status": "Status",
+      "meaning": "Meaning"
+    },
+    "notes": {
+      "utc": "Times are ISO-8601 in UTC. Render them in the timezone the response names.",
+      "inclusive": "The range covers whole days, so a class starting late on the last day is included.",
+      "cancelled": "current and next skip cancelled classes; the classes list still returns them with status CANCELED.",
+      "cache": "Responses are never cached, so a widget refresh always reflects the last sync."
+    },
+    "errors": {
+      "badRequest": "A date is malformed, the range runs backwards, or it is too long.",
+      "unauthorized": "The token is missing, malformed, or has been revoked.",
+      "noTimetable": "The account has not synced a VTC timetable yet.",
+      "server": "Something failed on our side. Retry before showing an error in the widget."
+    }
   },
   "nav": {
     "label": "Main navigation",

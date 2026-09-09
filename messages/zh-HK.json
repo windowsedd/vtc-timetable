@@ -24,7 +24,13 @@
     "error": "錯誤",
     "success": "成功",
     "refresh": "重新整理",
-    "noData": "沒有可用資料"
+    "noData": "沒有可用資料",
+    "loadingElapsed": "{seconds} 秒",
+    "splashStage": {
+      "session": "正在檢查登入狀態",
+      "workspace": "正在載入你的工作區",
+      "slow": "仍在載入 — 伺服器回應比平常慢"
+    }
   },
   "auth": {
     "welcomeBack": "歡迎回來",
@@ -143,6 +149,7 @@
     "safe": "安全",
     "recoverable": "可補救",
     "failed": "未達標",
+    "entryCourse": "課程",
     "followUp": "需跟進",
     "finished": "已完成",
     "noClassRecords": "沒有課堂紀錄",
@@ -323,6 +330,22 @@
     "loginSecurityDescription": "管理電郵及密碼登入。",
     "storedData": "已儲存資料",
     "storedDataDescription": "管理已同步的課表及出席資料。",
+    "loadingSettings": "正在載入設定",
+    "apiAccess": "API 存取",
+    "apiAccessDescription": "供 iOS 小工具等應用讀取上課時間的唯讀權杖。",
+    "apiToken": "API 權杖",
+    "apiTokenNone": "尚未建立權杖",
+    "apiTokenCreate": "建立權杖",
+    "apiTokenRegenerate": "重新產生",
+    "apiTokenRevoke": "撤銷",
+    "apiTokenCopy": "複製",
+    "apiTokenCopied": "已複製",
+    "apiTokenCopyFailed": "無法複製權杖。",
+    "apiTokenReveal": "顯示權杖",
+    "apiTokenHide": "隱藏權杖",
+    "apiTokenHint": "請以 Authorization: Bearer 標頭傳送至 {endpoint}。重新產生後，使用舊權杖的裝置會立即失效。",
+    "apiTokenDocs": "閱讀 API 文件 →",
+    "apiTokenWarning": "持有此權杖的人可讀取你的上課時間，請勿外洩。",
     "backToCalendar": "返回行事曆",
     "theme": "主題",
     "light": "淺色",
@@ -540,7 +563,56 @@
     "nextClassInMinutes": "{count} 分鐘後",
     "nextClassInHours": "{count} 小時後",
     "nextClassInDays": "{count} 日後",
+    "inClassLabel": "上課中",
+    "inClassEn": "In class now",
+    "classMinutesLeft": "尚餘 {count} 分鐘",
+    "classProgressLabel": "本堂課進度",
+    "nextClassProgressLabel": "距離下一堂課",
     "viewClass": "查看課堂"
+  },
+  "apiDocs": {
+    "eyebrow": "開發者參考",
+    "title": "課堂 API",
+    "subtitle": "讓 iOS 小工具、快捷指令或任何可傳送 HTTP 標頭的應用讀取你的上課時間。",
+    "authTitle": "身份驗證",
+    "authBody": "每個請求都要在 Authorization 標頭帶上個人權杖。因為小工具無法保持瀏覽器登入狀態，所以沒有 cookie 或登入流程。",
+    "requestLabel": "請求",
+    "tokenLink": "到設定建立權杖 →",
+    "requestTitle": "查詢參數",
+    "rangeLimit": "兩者都以香港日期計算，每次最多可查詢 {days} 天。",
+    "responseTitle": "回應",
+    "responseLabel": "200 OK",
+    "errorsTitle": "錯誤",
+    "examplesTitle": "範例",
+    "swiftLabel": "Swift（WidgetKit）",
+    "widgetNote": "在 TimelineProvider 中取數據並建立條目；回應已經告訴你哪一堂課進行中、下一堂是什麼。",
+    "backHome": "返回日曆",
+    "manageToken": "管理權杖",
+    "params": {
+      "from": "起始日期，格式為 YYYY-MM-DD。",
+      "fromDefault": "今天",
+      "to": "結束日期，當天全日包含在內。",
+      "toDefault": "起始日期後七天"
+    },
+    "table": {
+      "parameter": "參數",
+      "description": "說明",
+      "fallback": "省略時",
+      "status": "狀態碼",
+      "meaning": "意義"
+    },
+    "notes": {
+      "utc": "時間為 ISO-8601 UTC 格式，請依回應中的時區顯示。",
+      "inclusive": "範圍以整日計算，最後一天晚上開始的課堂也會包含。",
+      "cancelled": "current 與 next 不會選已取消的課堂；classes 仍會以 CANCELED 狀態列出。",
+      "cache": "回應不會被快取，小工具每次更新都是最新同步結果。"
+    },
+    "errors": {
+      "badRequest": "日期格式錯誤、範圍逆向或過長。",
+      "unauthorized": "權杖缺失、格式錯誤或已被撤銷。",
+      "noTimetable": "帳戶尚未同步 VTC 時間表。",
+      "server": "服務器出錯，建議重試後才在小工具顯示錯誤。"
+    }
   },
   "nav": {
     "label": "主要導覽",

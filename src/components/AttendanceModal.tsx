@@ -19,9 +19,16 @@ function getClassSemLabel(dateStr: string): string {
 interface AttendanceModalProps {
 	course: HybridAttendanceStats | null;
 	onClose: () => void;
+	/**
+	 * Every course the modal may switch to. The attendance page opens manual
+	 * entry from one button, so without this the sheet would be stuck on
+	 * whichever course happened to be first.
+	 */
+	courses?: HybridAttendanceStats[];
+	onCourseChange?: (course: HybridAttendanceStats) => void;
 }
 
-export default function AttendanceModal({ course, onClose }: AttendanceModalProps) {
+export default function AttendanceModal({ course, onClose, courses, onCourseChange }: AttendanceModalProps) {
 	const t = useTranslations("attendance");
 	const tCal = useTranslations("calendar");
 
@@ -99,6 +106,26 @@ export default function AttendanceModal({ course, onClose }: AttendanceModalProp
 					</button>
 				</div>
 
+				{courses && courses.length > 1 && onCourseChange ? (
+					<div className="attendance-modal-course">
+						<label htmlFor="attendance-modal-course-select">{t("entryCourse")}</label>
+						<select
+							id="attendance-modal-course-select"
+							value={course.courseCode}
+							onChange={(event) => {
+								const next = courses.find((item) => item.courseCode === event.target.value);
+								if (next) onCourseChange(next);
+							}}
+						>
+							{courses.map((item) => (
+								<option key={item.courseCode} value={item.courseCode}>
+									{item.courseCode} · {item.courseName}
+								</option>
+							))}
+						</select>
+					</div>
+				) : null}
+
 				{/* Stats Bar - Detailed Breakdown */}
 				<div className="px-4 py-3 bg-overlay border-b border-[var(--sidebar-border)]">
 					{/* Detailed Stats Row */}
@@ -160,10 +187,10 @@ export default function AttendanceModal({ course, onClose }: AttendanceModalProp
 								<button
 									key={sem}
 									onClick={() => setSelectedSem(sem)}
-									className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-colors ${isActive ? "bg-accent text-white" : "bg-overlay text-[var(--text-secondary)] hover:bg-active"}`}
+									className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-colors ${isActive ? "bg-accent text-accent-fg" : "bg-overlay text-[var(--text-secondary)] hover:bg-active"}`}
 								>
 									<div>{tCal(semesterI18nKey(sem))}</div>
-									<div className={`text-[10px] mt-0.5 ${isActive ? "text-white/80" : "text-[var(--text-tertiary)]"}`}>
+									<div className={`text-[10px] mt-0.5 ${isActive ? "text-accent-fg/80" : "text-[var(--text-tertiary)]"}`}>
 										{b.attended}/{b.calendarTotalClasses} · {b.attendanceRate.toFixed(0)}%
 									</div>
 								</button>

@@ -59,6 +59,10 @@ export {
 } from "./calendar-share";
 export type { CalendarShareState } from "./calendar-share";
 
+// Widget API token
+export { getApiTokenState, regenerateApiToken, revokeApiToken } from "./api-token";
+export type { ApiTokenState } from "./api-token";
+
 // ── Moodle ───────────────────────────────────────────
 export { getMoodleDeadlines } from "./moodle";
 

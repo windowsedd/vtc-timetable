@@ -182,6 +182,7 @@ function SharedEventCard({
 			</time>
 			<div>
 				<strong>{event.courseCode}</strong>
+				{event.lessonType ? <em className="shared-calendar-event-type">{event.lessonType}</em> : null}
 				{compact ? null : <span>{event.courseTitle}</span>}
 			</div>
 			<small>{event.location || roomTba}</small>
@@ -257,8 +258,7 @@ export default async function SharedCalendarPage(props: PageProps) {
 							return (
 								<section key={dateKey(day)} className="shared-calendar-month-day">
 									<h2>{formatDay(day, displayLocale, true)}</h2>
-									{events.slice(0, 3).map((event) => <SharedEventCard key={`${event.courseCode}-${event.startTime}`} event={event} locale={displayLocale} roomTba={t("roomTba")} compact />)}
-									{events.length > 3 ? <small>+{events.length - 3}</small> : null}
+									{events.map((event) => <SharedEventCard key={`${event.courseCode}-${event.startTime}`} event={event} locale={displayLocale} roomTba={t("roomTba")} compact />)}
 								</section>
 							);
 						})}

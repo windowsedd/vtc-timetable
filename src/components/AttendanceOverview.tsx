@@ -105,6 +105,10 @@ export default function AttendanceOverview({ onStatsLoaded }: AttendanceOverview
 		[semester, stats],
 	);
 
+	// Manual entry is opened from one button, so the modal needs the whole
+	// visible course list to switch between.
+	const entryCourses = useMemo(() => rows.map((row) => row.course), [rows]);
+
 	const semesterLabel = (sem: string) => tCal(semesterI18nKey(sem));
 	const percent = (value: number | null) => (value === null ? t("noData") : `${value.toFixed(1)}%`);
 
@@ -131,8 +135,8 @@ export default function AttendanceOverview({ onStatsLoaded }: AttendanceOverview
 						className="attendance-entry-button"
 						aria-haspopup="dialog"
 						onClick={() => {
-							// Open manual entry on the first visible course; the modal
-							// still lets the user switch semester tabs inside a course.
+							// Opens on the first visible course; the picker in the modal
+							// switches to any other course in this semester.
 							setEntryCourse(rows[0]?.course ?? stats[0] ?? null);
 							setEntryOpen(true);
 						}}
@@ -299,6 +303,8 @@ export default function AttendanceOverview({ onStatsLoaded }: AttendanceOverview
 			{entryOpen && (
 				<AttendanceModal
 					course={entryCourse}
+					courses={entryCourses}
+					onCourseChange={setEntryCourse}
 					onClose={() => {
 						setEntryOpen(false);
 						setEntryCourse(null);

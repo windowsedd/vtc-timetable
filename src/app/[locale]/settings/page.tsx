@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiTokenState, regenerateApiToken, revokeApiToken, type ApiTokenState } from "@/app/actions/api-token";
+import { maskApiToken } from "@/lib/api-token";
 import { clearVtcData, getUserSettings, resetGracePeriodThreshold, updateEmailPassword, updateGracePeriodThreshold } from "@/app/actions/settings";
 import { checkStoredToken, getPrintQuota, getProgrammeInfo, saveUserLocale } from "@/app/actions/user";
 import {
@@ -7,15 +9,16 @@ import {
 	MAX_GRACE_PERIOD_THRESHOLD,
 	MIN_GRACE_PERIOD_THRESHOLD,
 } from "@/lib/grace-period";
+import SessionSplash from "@/components/SessionSplash";
 import Sidebar from "@/components/Sidebar";
 import TopNavbar from "@/components/TopNavbar";
-import { ArrowLeft, Database, HardDrive, Languages, LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, Database, HardDrive, KeyRound, Languages, LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
 import { useSession } from "@/lib/auth-client";
 import { Link, useRouter } from "@/lib/navigation";
 import { writeLocaleCookie } from "@/lib/locale-cookie";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type PrintQuotaInfo = {
 	campus: string;
@@ -55,6 +58,10 @@ const LOCALE_OPTIONS = [
 	{ value: "zh-HK", label: "繁體中文" },
 	{ value: "en", label: "English" },
 ] as const;
+
+// Keeps a jumped-to section clear of the sticky section nav; matches the
+// `scroll-mt-24` the sections carry for the browser's own fragment jump.
+const SECTION_SCROLL_OFFSET = 96;
 
 
 export default function SettingsPage() {
@@ -268,16 +275,71 @@ export default function SettingsPage() {
 		}
 	};
 
-	if (loading) {
-		return (
-			<div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
-				<div className="text-center">
-					<div className="w-10 h-10 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-					<p className="text-[var(--text-secondary)] text-sm">Loading settings…</p>
-				</div>
-			</div>
-		);
-	}
+	const [apiToken, setApiToken] = useState<ApiTokenState | null>(null);
+	const [apiTokenBusy, setApiTokenBusy] = useState(false);
+	const [apiTokenVisible, setApiTokenVisible] = useState(false);
+	const [apiTokenCopied, setApiTokenCopied] = useState(false);
+	const [apiTokenError, setApiTokenError] = useState<string | null>(null);
+
+	useEffect(() => {
+		getApiTokenState().then(setApiToken).catch(() => setApiToken(null));
+	}, []);
+
+	const runApiTokenAction = async (action: () => Promise<ApiTokenState>) => {
+		setApiTokenBusy(true);
+		setApiTokenError(null);
+		const result = await action();
+		setApiTokenBusy(false);
+		if (!result.success) {
+			setApiTokenError(result.error ?? null);
+			return;
+		}
+		// A freshly minted token is worth reading; a revoked one has nothing to show.
+		setApiTokenVisible(Boolean(result.token));
+		setApiTokenCopied(false);
+		setApiToken(result);
+	};
+
+	const copyApiToken = async () => {
+		if (!apiToken?.token) return;
+		try {
+			await navigator.clipboard.writeText(apiToken.token);
+			setApiTokenCopied(true);
+			window.setTimeout(() => setApiTokenCopied(false), 3_000);
+		} catch {
+			setApiTokenError(t("apiTokenCopyFailed"));
+		}
+	};
+
+	const shellRef = useRef<HTMLDivElement>(null);
+
+	// A fragment link scrolls every scrollable ancestor of its target, and the
+	// last sections sit past the end of the shell's own scroll range, so the
+	// browser makes up the difference on the clipped boxes above it and drags the
+	// top bar and the rail out of view. Scroll the shell on its own instead.
+	const scrollToSection = useCallback((id: string) => {
+		const shell = shellRef.current;
+		const target = document.getElementById(id);
+		if (!shell || !target || !shell.contains(target)) return;
+		const top = shell.scrollTop + target.getBoundingClientRect().top - shell.getBoundingClientRect().top;
+		shell.scrollTo({ top: Math.max(top - SECTION_SCROLL_OFFSET, 0), behavior: "smooth" });
+	}, []);
+
+	const jumpToSection = (event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+		event.preventDefault();
+		window.history.replaceState(null, "", `#${id}`);
+		scrollToSection(id);
+	};
+
+	// The sections only mount once the settings have loaded; the browser ran its
+	// own jump for a `#…` URL much earlier, against the loading splash.
+	useEffect(() => {
+		if (loading) return;
+		const id = window.location.hash.slice(1);
+		if (id) scrollToSection(id);
+	}, [loading, scrollToSection]);
+
+	if (loading) return <SessionSplash label={t("loadingSettings")} />;
 
 	// Locale is a cookie, so switching keeps the current path and just
 	// re-renders it on the server.
@@ -313,7 +375,7 @@ export default function SettingsPage() {
 				sidebarOpen={sidebarOpen}
 			/>
 
-			<div className="settings-shell min-w-0 flex-1 overflow-y-auto">
+			<div ref={shellRef} className="settings-shell min-w-0 flex-1 overflow-y-auto">
 			{/* Back arrow beside the title, matching the reference header. */}
 			<header className="settings-heading">
 				<Link href="/" className="settings-back" aria-label={t("backToCalendar")}>
@@ -329,13 +391,28 @@ export default function SettingsPage() {
 			<div className="settings-layout">
 				<aside className="settings-nav" aria-label={t("title")}>
 					<p className="settings-nav-label">{t("title")}</p>
-					<a href="#account">{t("account")}</a>
-					<a href="#language">{t("language")}</a>
-					<a href="#connection">{t("vtcConnection")}</a>
+					<a href="#account" onClick={(event) => jumpToSection(event, "account")}>
+						{t("account")}
+					</a>
+					<a href="#language" onClick={(event) => jumpToSection(event, "language")}>
+						{t("language")}
+					</a>
+					<a href="#connection" onClick={(event) => jumpToSection(event, "connection")}>
+						{t("vtcConnection")}
+					</a>
 					<Link href="/api">{t("apiPlayground")}</Link>
-					<a href="#attendance">{t("gracePeriodTitle")}</a>
-					<a href="#security">{t("loginSecurity")}</a>
-					<a href="#data">{t("storedData")}</a>
+					<a href="#attendance" onClick={(event) => jumpToSection(event, "attendance")}>
+						{t("gracePeriodTitle")}
+					</a>
+					<a href="#security" onClick={(event) => jumpToSection(event, "security")}>
+						{t("loginSecurity")}
+					</a>
+					<a href="#api" onClick={(event) => jumpToSection(event, "api")}>
+						{t("apiAccess")}
+					</a>
+					<a href="#data" onClick={(event) => jumpToSection(event, "data")}>
+						{t("storedData")}
+					</a>
 				</aside>
 			<motion.main
 				className="settings-content space-y-6"
@@ -753,6 +830,71 @@ export default function SettingsPage() {
 								}
 							</button>
 						</form>
+					</div>
+				</motion.div>
+
+				{/* ── API access (iOS widget) ─────────────── */}
+				<motion.div id="api" className="settings-section scroll-mt-24" variants={itemVariants}>
+					<div className="settings-section-header">
+						<span className="settings-section-icon" aria-hidden="true"><KeyRound /></span>
+						<div className="min-w-0">
+							<h2>{t("apiAccess")}</h2>
+							<p>{t("apiAccessDescription")}</p>
+						</div>
+					</div>
+					<div className="settings-section-body">
+						<div className="settings-row">
+							<span className="settings-row-label">{t("apiToken")}</span>
+							<div className="settings-api-token">
+								<code>
+									{apiToken?.token
+										? (apiTokenVisible ? apiToken.token : maskApiToken(apiToken.token))
+										: <span className="text-[var(--text-tertiary)]">{t("apiTokenNone")}</span>}
+								</code>
+								{apiToken?.token ? (
+									<>
+										<button
+											type="button"
+											className="btn-secondary text-xs"
+											onClick={() => setApiTokenVisible((visible) => !visible)}
+										>
+											{apiTokenVisible ? t("apiTokenHide") : t("apiTokenReveal")}
+										</button>
+										<button type="button" className="btn-secondary text-xs" onClick={copyApiToken}>
+											{apiTokenCopied ? t("apiTokenCopied") : t("apiTokenCopy")}
+										</button>
+									</>
+								) : null}
+							</div>
+						</div>
+
+						<div className="settings-row">
+							<span className="settings-row-label">{t("apiTokenWarning")}</span>
+							<div className="flex items-center gap-2">
+								<button
+									type="button"
+									className="btn-primary text-xs disabled:opacity-50"
+									disabled={apiTokenBusy}
+									onClick={() => runApiTokenAction(regenerateApiToken)}
+								>
+									{apiToken?.enabled ? t("apiTokenRegenerate") : t("apiTokenCreate")}
+								</button>
+								{apiToken?.enabled ? (
+									<button
+										type="button"
+										className="btn-danger text-xs disabled:opacity-50"
+										disabled={apiTokenBusy}
+										onClick={() => runApiTokenAction(revokeApiToken)}
+									>
+										{t("apiTokenRevoke")}
+									</button>
+								) : null}
+							</div>
+						</div>
+
+						<p className="settings-api-token-hint">{t("apiTokenHint", { endpoint: "/api/classes" })}</p>
+						<Link href="/docs/api" className="settings-api-token-link">{t("apiTokenDocs")}</Link>
+						{apiTokenError ? <p className="text-xs text-[var(--error)]">{apiTokenError}</p> : null}
 					</div>
 				</motion.div>
 

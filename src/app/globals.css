@@ -3046,6 +3046,18 @@ body {
 .shared-calendar-event strong { font-size: 13px; }
 .shared-calendar-event span { margin-top: 3px; color: var(--text-secondary); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shared-calendar-event small { color: var(--text-tertiary); font-size: 10px; text-align: right; }
+/* Lecture / tutorial / practical, tinted with the course's own line color. */
+.shared-calendar-event-type {
+	display: inline-block;
+	margin-top: 4px;
+	padding: 1px 7px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--share-line) 20%, transparent);
+	color: var(--text-secondary);
+	font-size: 10px;
+	font-style: normal;
+	font-weight: 700;
+}
 .shared-calendar-month-grid {
 	display: grid;
 	grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -3075,6 +3087,7 @@ body {
 }
 .shared-calendar-event.is-compact time { display: block; margin-bottom: 2px; font-size: 8px; }
 .shared-calendar-event.is-compact strong { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.shared-calendar-event.is-compact .shared-calendar-event-type { margin-top: 3px; padding: 0 5px; font-size: 8px; }
 .shared-calendar-event.is-compact small { display: block; margin-top: 2px; overflow: hidden; font-size: 8px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .shared-calendar-month-day > small { display: block; margin-top: 5px; color: var(--text-tertiary); font-size: 9px; }
 .shared-calendar-empty { padding: clamp(48px, 9vw, 96px) 24px; text-align: center; }
@@ -5212,6 +5225,366 @@ body {
 
 .next-class-countdown {
 	background: color-mix(in srgb, var(--accent-fg) 22%, transparent) !important;
+}
+
+/* ============================================
+   CLASSES API DOCS (/docs/api)
+   ============================================ */
+
+.api-docs-page {
+	padding: clamp(16px, 4vw, 48px) clamp(12px, 4vw, 32px);
+	background: var(--background);
+}
+.api-docs-shell {
+	width: min(100%, 860px);
+	margin: 0 auto;
+	overflow: hidden;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-card);
+	background: var(--bg-surface);
+	box-shadow: var(--shadow-md);
+}
+.api-docs-header {
+	padding: clamp(22px, 4vw, 36px);
+	border-bottom: 1px solid var(--border-default);
+	background: var(--bg-subtle);
+}
+.api-docs-header > p:first-child {
+	margin: 0 0 6px;
+	color: var(--accent-blue);
+	font-size: 10px;
+	font-weight: 750;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+.api-docs-header h1 {
+	margin: 0;
+	font-family: var(--font-display);
+	font-size: clamp(24px, 4vw, 32px);
+	font-weight: 900;
+	letter-spacing: -0.03em;
+}
+.api-docs-lede {
+	margin: 8px 0 0;
+	max-width: 60ch;
+	color: var(--text-secondary);
+	font-size: 14px;
+	line-height: 1.6;
+}
+.api-docs-endpoint {
+	display: inline-block;
+	margin-top: 14px;
+	padding: 6px 12px;
+	border: 1px solid var(--border-default);
+	border-radius: 999px;
+	background: var(--bg-surface);
+	font-family: var(--font-mono);
+	font-size: 13px;
+}
+.api-docs-section {
+	padding: clamp(20px, 3.5vw, 30px) clamp(22px, 4vw, 36px);
+	border-bottom: 1px solid var(--border-default);
+}
+.api-docs-section h2 {
+	margin: 0 0 10px;
+	font-family: var(--font-display);
+	font-size: 16px;
+	font-weight: 800;
+	letter-spacing: -0.01em;
+}
+.api-docs-section p {
+	margin: 0;
+	max-width: 68ch;
+	color: var(--text-secondary);
+	font-size: 13px;
+	line-height: 1.65;
+}
+.api-docs-code {
+	margin: 14px 0 0;
+	overflow: hidden;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-sm);
+	background: var(--bg-subtle);
+}
+.api-docs-code figcaption {
+	padding: 7px 12px;
+	border-bottom: 1px solid var(--border-default);
+	color: var(--text-tertiary);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+.api-docs-code pre {
+	margin: 0;
+	overflow-x: auto;
+	padding: 14px;
+}
+.api-docs-code code {
+	color: var(--foreground);
+	font-family: var(--font-mono);
+	font-size: 12px;
+	line-height: 1.65;
+	white-space: pre;
+}
+.api-docs-link {
+	display: inline-block;
+	margin-top: 14px;
+	color: var(--accent-blue);
+	font-size: 13px;
+	font-weight: 700;
+}
+.api-docs-table-scroll { overflow-x: auto; }
+.api-docs-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+.api-docs-table th,
+.api-docs-table td {
+	padding: 9px 12px 9px 0;
+	border-bottom: 1px solid var(--border-subtle);
+	text-align: left;
+	vertical-align: top;
+}
+.api-docs-table th {
+	color: var(--text-tertiary);
+	font-size: 10px;
+	font-weight: 750;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+.api-docs-table td { color: var(--text-secondary); line-height: 1.55; }
+.api-docs-table code {
+	color: var(--foreground);
+	font-family: var(--font-mono);
+	font-size: 12px;
+}
+.api-docs-notes {
+	margin: 14px 0 0;
+	padding-left: 18px;
+	/* Preflight strips list markers; these read as a list, so put them back. */
+	list-style: disc;
+	color: var(--text-secondary);
+	font-size: 13px;
+	line-height: 1.7;
+}
+.api-docs-note {
+	margin-top: 12px !important;
+	color: var(--text-tertiary) !important;
+	font-size: 12px !important;
+}
+.api-docs-footer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 18px;
+	padding: 18px clamp(22px, 4vw, 36px);
+	background: var(--bg-subtle);
+}
+.api-docs-footer a {
+	color: var(--accent-blue);
+	font-size: 12px;
+	font-weight: 700;
+}
+
+/* API token row: the secret needs room to wrap without pushing the buttons out. */
+.settings-api-token {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	min-width: 0;
+}
+
+.settings-api-token code {
+	max-width: 100%;
+	overflow-wrap: anywhere;
+	padding: 6px 10px;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-lg);
+	background: var(--bg-subtle);
+	color: var(--foreground);
+	font-family: var(--font-mono);
+	font-size: 12px;
+}
+
+.settings-api-token-link {
+	display: inline-block;
+	margin-top: 6px;
+	color: var(--accent-blue);
+	font-size: 11px;
+	font-weight: 700;
+}
+
+.settings-api-token-hint {
+	margin-top: 4px;
+	color: var(--text-tertiary);
+	font-size: 11px;
+	line-height: 1.5;
+}
+
+/* Course picker in the manual attendance-entry sheet. */
+.attendance-modal-course {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--sidebar-border);
+}
+
+.attendance-modal-course label {
+	flex: none;
+	color: var(--text-tertiary);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.attendance-modal-course select {
+	flex: 1;
+	min-width: 0;
+	padding: 7px 10px;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-lg);
+	background: var(--bg-surface);
+	color: var(--foreground);
+	font: inherit;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.attendance-modal-course select:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+/* Full-page loader: the app mark under a prism ring, in the logo's own colors. */
+.session-splash {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: min(320px, calc(100vw - 48px));
+	text-align: center;
+}
+
+.session-splash-title {
+	margin-top: 18px;
+	color: var(--foreground);
+	font-family: var(--font-display);
+	font-size: 16px;
+	font-weight: 900;
+	letter-spacing: -0.02em;
+}
+
+.session-splash-status {
+	margin-top: 4px;
+	color: var(--text-secondary);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.session-splash-progress {
+	overflow: hidden;
+	width: 100%;
+	height: 6px;
+	margin-top: 16px;
+	border-radius: 999px;
+	background: var(--border-subtle);
+}
+
+.session-splash-progress span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--accent-blue);
+	transition: width 0.18s ease;
+}
+
+.session-splash-elapsed {
+	margin-top: 8px;
+	color: var(--text-tertiary);
+	font-family: var(--font-mono);
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}
+
+.session-splash-mark {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 124px;
+	height: 124px;
+}
+
+.session-splash-ring {
+	position: absolute;
+	inset: 0;
+	border-radius: 999px;
+	background: conic-gradient(
+		from 0deg,
+		transparent 0deg,
+		#e91e63 70deg,
+		#ff9800 150deg,
+		#2196f3 230deg,
+		#4caf50 310deg,
+		transparent 360deg
+	);
+	-webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+	mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+	animation: session-splash-spin 1.5s linear infinite;
+}
+
+.session-splash-logo {
+	width: 76px;
+	height: 76px;
+	border-radius: 20px;
+	animation: session-splash-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes session-splash-spin {
+	to { transform: rotate(360deg); }
+}
+
+@keyframes session-splash-breathe {
+	0%, 100% {
+		transform: scale(1);
+		filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--foreground) 22%, transparent));
+	}
+	50% {
+		transform: scale(1.06);
+		filter: drop-shadow(0 12px 26px color-mix(in srgb, var(--foreground) 34%, transparent));
+	}
+}
+
+/* The mark alone still reads as "busy"; the motion is decoration. */
+@media (prefers-reduced-motion: reduce) {
+	.session-splash-ring { animation: none; opacity: 0.55; }
+	.session-splash-logo { animation: none; }
+}
+
+/* Time left in the class you are in, or the wait until the next one. */
+.next-class-progress {
+	position: relative;
+	overflow: hidden;
+	height: 6px;
+	margin-top: 4px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--accent-fg) 18%, transparent);
+}
+
+.next-class-progress-fill {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--accent-fg);
+	transition: width 0.6s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.next-class-progress-fill { transition: none; }
 }
 
 .next-class-action {
