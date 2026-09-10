@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarEvent } from "@/types/timetable";
-import { APP_TIME_ZONE, formatClassDate } from "@/lib/event-date";
+import { APP_TIME_ZONE, formatCompactClassDate } from "@/lib/event-date";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertTriangle, Ban, Check, Pencil, UserX, X } from "lucide-react";
 import { LINE_COLORS } from "@/lib/colors";
@@ -41,7 +41,7 @@ export default function EventDetailsModal({
 
     if (!isOpen || !event) return null;
 
-    const classDate = formatClassDate(event.start, locale);
+    const classDate = formatCompactClassDate(event.start, locale);
 
     const handleClose = () => {
         setIsClosing(true);
@@ -152,9 +152,7 @@ export default function EventDetailsModal({
 
     // ── Moodle Deadline Modal ──────────────────────────────────────
     if (event.resource?.eventType === "deadline") {
-        const dueDate = event.start.toLocaleDateString("en-US", {
-            weekday: "short", month: "short", day: "numeric", year: "numeric",
-        });
+        const dueDate = formatCompactClassDate(event.start, locale);
         const dueTime = formatTime(event.start);
         const isPast = event.start < new Date();
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { apiTokenFromRequest, bearerToken, createApiToken, isValidApiToken, maskApiToken } from "./api-token";
-import { buildClassesPayload, dayKey, resolveClassRange, toApiClass } from "./classes-api";
+import { buildClassesPayload, dayKey, formatTimeRange, resolveClassRange, toApiClass, toLocalIso } from "./classes-api";
 
 // 2026-09-09 10:30 Hong Kong time.
 const NOW = new Date("2026-09-09T02:30:00.000Z");
@@ -106,6 +106,7 @@ describe("classes payload", () => {
 		expect(payload.next?.courseCode).toBe("ITE3102");
 		expect(payload.range).toEqual({ from: "2026-09-09", to: "2026-09-16" });
 		expect(payload.timezone).toBe("Asia/Hong_Kong");
+		expect(payload.locale).toBe("en");
 	});
 
 	test("never offers a cancelled class as current or next, but still lists it", () => {
@@ -118,6 +119,30 @@ describe("classes payload", () => {
 		expect(payload.next).toBeNull();
 		expect(payload.classes).toHaveLength(1);
 		expect(payload.classes[0].status).toBe("CANCELED");
+	});
+
+	test("writes times with the Hong Kong offset, not a UTC Z", () => {
+		expect(toLocalIso(new Date("2026-09-09T01:30:00.000Z"))).toBe("2026-09-09T09:30:00+08:00");
+		const mapped = toApiClass(classAt("ITE3102", "2026-09-09T01:30:00.000Z", "2026-09-09T03:30:00.000Z"));
+		expect(mapped.startsAt).toBe("2026-09-09T09:30:00+08:00");
+		expect(mapped.endsAt).toBe("2026-09-09T11:30:00+08:00");
+		// Still a real instant for any ISO-8601 parser.
+		expect(Date.parse(mapped.startsAt)).toBe(Date.parse("2026-09-09T01:30:00.000Z"));
+	});
+
+	test("labels the date and time in the account's language", () => {
+		const hk = toApiClass(classAt("ITP4903", "2026-09-10T02:30:00.000Z", "2026-09-10T04:00:00.000Z"), "zh-HK");
+		expect(hk.dateLabel).toBe("9\u670810\u65e5\u9031\u56db");
+		expect(hk.timeLabel).toBe("\u4e0a\u534810:30 \u2013 \u4e0b\u534812:00");
+
+		const en = toApiClass(classAt("ITP4903", "2026-09-10T02:30:00.000Z", "2026-09-10T04:00:00.000Z"), "en");
+		expect(en.dateLabel).toBe("Thu, Sep 10");
+		expect(en.timeLabel).toBe("10:30 AM \u2013 12:00 PM");
+
+		// English is the fallback when the account has no locale set.
+		expect(toApiClass(classAt("X", "2026-09-10T02:30:00.000Z", "2026-09-10T04:00:00.000Z")).dateLabel).toBe("Thu, Sep 10");
+		expect(formatTimeRange(new Date("2026-09-10T02:30:00.000Z"), new Date("2026-09-10T04:00:00.000Z"), "en"))
+			.toBe("10:30 AM \u2013 12:00 PM");
 	});
 
 	test("maps a stored event onto the widget shape", () => {

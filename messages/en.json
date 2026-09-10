@@ -631,8 +631,9 @@
       "meaning": "Meaning"
     },
     "notes": {
-      "utc": "Times are ISO-8601 in UTC. Render them in the timezone the response names.",
+      "utc": "Times are ISO-8601 carrying the +08:00 offset, so they read as the time on the timetable and still parse as an instant.",
       "inclusive": "The range covers whole days, so a class starting late on the last day is included.",
+      "labels": "dateLabel and timeLabel are already formatted in the language the account reads the app in, so a widget can print them as they are.",
       "cancelled": "current and next skip cancelled classes; the classes list still returns them with status CANCELED.",
       "cache": "Responses are never cached, so a widget refresh always reflects the last sync."
     },

@@ -22,7 +22,8 @@ Accept: application/json`;
 
 const RESPONSE_SAMPLE = `{
   "timezone": "Asia/Hong_Kong",
-  "generatedAt": "2026-09-09T02:30:00.000Z",
+  "locale": "en",
+  "generatedAt": "2026-09-09T10:30:00+08:00",
   "range": { "from": "2026-09-09", "to": "2026-09-16" },
   "current": {
     "courseCode": "ITP4501",
@@ -30,14 +31,16 @@ const RESPONSE_SAMPLE = `{
     "lessonType": "Lecture",
     "location": "DL-IT-B217",
     "lecturer": "Chan",
-    "startsAt": "2026-09-09T01:30:00.000Z",
-    "endsAt": "2026-09-09T03:30:00.000Z",
+    "startsAt": "2026-09-09T09:30:00+08:00",
+    "endsAt": "2026-09-09T11:30:00+08:00",
+    "dateLabel": "Wed, Sep 9",
+    "timeLabel": "9:30 AM \u2013 11:30 AM",
     "minutes": 120,
     "status": "UPCOMING",
     "semester": 1,
     "colorIndex": 2
   },
-  "next": { "courseCode": "ITE3102", "startsAt": "2026-09-09T03:30:00.000Z", "...": "..." },
+  "next": { "courseCode": "ITE3102", "startsAt": "2026-09-09T11:30:00+08:00", "...": "..." },
   "classes": [ { "courseCode": "ITP4501", "...": "..." } ]
 }`;
 
@@ -56,6 +59,7 @@ const SWIFT_SAMPLE = `struct ClassesResponse: Decodable {
 struct VtcClass: Decodable, Identifiable {
     var id: String { courseCode + startsAt }
     let courseCode, courseTitle, lessonType, location, status: String
+    let dateLabel, timeLabel: String
     let startsAt, endsAt: String
     let minutes: Int
 }
@@ -87,7 +91,7 @@ export default async function ClassesApiDocsPage() {
 		{ status: "500", meaning: t("errors.server") },
 	];
 
-	const notes = ["utc", "inclusive", "cancelled", "cache"] as const;
+	const notes = ["labels", "utc", "inclusive", "cancelled", "cache"] as const;
 
 	return (
 		<main className="api-docs-page">

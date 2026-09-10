@@ -1,5 +1,5 @@
 import { apiTokenFromRequest, isValidApiToken } from "@/lib/api-token";
-import { buildClassesPayload, MAX_RANGE_DAYS, resolveClassRange, type ClassRangeError } from "@/lib/classes-api";
+import { buildClassesPayload, MAX_RANGE_DAYS, resolveClassRange, type ApiLocale, type ClassRangeError } from "@/lib/classes-api";
 import connectDB from "@/lib/db";
 import Event from "@/models/Event";
 import User from "@/models/User";
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 		await connectDB();
 
 		// The token is the whole credential, so the lookup is the authentication.
-		const user = await User.findOne({ apiToken: token }).select("vtcStudentId").lean();
+		const user = await User.findOne({ apiToken: token }).select("vtcStudentId locale").lean();
 		if (!user) return unauthorized("That API token has been revoked.");
 		if (!user.vtcStudentId) {
 			return NextResponse.json(
@@ -81,7 +81,10 @@ export async function GET(request: NextRequest) {
 			.sort({ startTime: 1 })
 			.lean();
 
-		return NextResponse.json(buildClassesPayload(events, resolved.range, now), {
+		// Labels follow the language the account reads the app in.
+		const locale: ApiLocale = user.locale === "zh-HK" ? "zh-HK" : "en";
+
+		return NextResponse.json(buildClassesPayload(events, resolved.range, now, locale), {
 			headers: { "Cache-Control": "private, no-store" },
 		});
 	} catch {

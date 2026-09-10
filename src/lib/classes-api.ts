@@ -1,4 +1,4 @@
-import { APP_TIME_ZONE } from "@/lib/event-date";
+import { APP_TIME_ZONE, formatCompactClassDate } from "@/lib/event-date";
 
 /**
  * Shapes the `/api/classes` payload for the iOS widget. Kept apart from the
@@ -31,6 +31,9 @@ export type ClassSource = {
 	colorIndex?: number | null;
 };
 
+/** The locales the app ships copy in; labels come back in the account's own. */
+export type ApiLocale = "en" | "zh-HK";
+
 export type ApiClass = {
 	courseCode: string;
 	courseTitle: string;
@@ -39,6 +42,10 @@ export type ApiClass = {
 	lecturer: string;
 	startsAt: string;
 	endsAt: string;
+	/** Ready to print: "Thu, Sep 10" / "9月10日週四". */
+	dateLabel: string;
+	/** Ready to print: "10:30 AM - 12:00 PM" / "上午10:30-下午12:00". */
+	timeLabel: string;
 	minutes: number;
 	status: string;
 	semester: number | null;
@@ -47,6 +54,8 @@ export type ApiClass = {
 
 export type ClassesPayload = {
 	timezone: string;
+	/** Which language the `dateLabel` and `timeLabel` strings are written in. */
+	locale: ApiLocale;
 	generatedAt: string;
 	range: { from: string; to: string };
 	current: ApiClass | null;
@@ -62,6 +71,27 @@ function startOfDay(day: string): Date | null {
 	// Round-trips the parts so "2026-02-31" is rejected instead of rolling over.
 	if (parsed.toISOString().slice(0, 10) !== day) return null;
 	return new Date(parsed.getTime() - HONG_KONG_UTC_OFFSET_MS);
+}
+
+/**
+ * ISO-8601 carrying the app's offset rather than a `Z`, so the time reads as
+ * the one on the timetable. Hong Kong has had no daylight saving since 1979,
+ * so the offset is a constant.
+ */
+export function toLocalIso(instant: Date): string {
+	const shifted = new Date(instant.getTime() + HONG_KONG_UTC_OFFSET_MS);
+	return `${shifted.toISOString().slice(0, 19)}+08:00`;
+}
+
+/** "10:30 AM - 12:00 PM", in the account's language and the app's timezone. */
+export function formatTimeRange(start: Date, end: Date, locale: ApiLocale): string {
+	const time = new Intl.DateTimeFormat(locale, {
+		hour: "numeric",
+		minute: "2-digit",
+		hour12: true,
+		timeZone: APP_TIME_ZONE,
+	});
+	return `${time.format(start)} \u2013 ${time.format(end)}`;
 }
 
 /** The Hong Kong calendar day an instant falls on. */
@@ -94,7 +124,7 @@ export function resolveClassRange(
 	return { range: { from: start, to: end, fromDay, toDay } };
 }
 
-export function toApiClass(event: ClassSource): ApiClass {
+export function toApiClass(event: ClassSource, locale: ApiLocale = "en"): ApiClass {
 	const startsAt = new Date(event.startTime);
 	const endsAt = new Date(event.endTime);
 	const semester = typeof event.semester === "number" ? event.semester : Number(event.semester);
@@ -105,8 +135,10 @@ export function toApiClass(event: ClassSource): ApiClass {
 		lessonType: event.lessonType ?? "",
 		location: event.location ?? "",
 		lecturer: event.lecturerName ?? "",
-		startsAt: startsAt.toISOString(),
-		endsAt: endsAt.toISOString(),
+		startsAt: toLocalIso(startsAt),
+		endsAt: toLocalIso(endsAt),
+		dateLabel: formatCompactClassDate(startsAt, locale) ?? "",
+		timeLabel: formatTimeRange(startsAt, endsAt, locale),
 		minutes: Math.max(0, Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000)),
 		status: event.status ?? "UPCOMING",
 		semester: Number.isFinite(semester) ? semester : null,
@@ -123,16 +155,18 @@ export function buildClassesPayload(
 	events: ClassSource[],
 	range: ClassRange,
 	now: Date,
+	locale: ApiLocale = "en",
 ): ClassesPayload {
 	const classes = events
-		.map(toApiClass)
+		.map((event) => toApiClass(event, locale))
 		.toSorted((a, b) => a.startsAt.localeCompare(b.startsAt));
 	const nowMs = now.getTime();
 	const live = classes.filter((item) => item.status !== "CANCELED");
 
 	return {
 		timezone: APP_TIME_ZONE,
-		generatedAt: new Date(nowMs).toISOString(),
+		locale,
+		generatedAt: toLocalIso(new Date(nowMs)),
 		range: { from: range.fromDay, to: range.toDay },
 		current: live.find((item) =>
 			Date.parse(item.startsAt) <= nowMs && Date.parse(item.endsAt) > nowMs) ?? null,
