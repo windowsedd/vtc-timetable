@@ -36,6 +36,8 @@
     "welcomeBack": "歡迎回來",
     "signInSubtitle": "登入以存取您的 VTC 行事曆",
     "continueWithDiscord": "使用 Discord 繼續",
+    "continueWithPasskey": "使用密碼金鑰登入",
+    "passkeyFailed": "密碼金鑰登入未完成，請再試一次或改用其他方式。",
     "signingIn": "登入中...",
     "orContinueWith": "或使用以下方式繼續",
     "email": "電子郵件",
@@ -268,6 +270,7 @@
     "vtcApiUrl": "VTC API 網址",
     "vtcUrlPlaceholder": "https://mobile.vtc.edu.hk/api?&token=YOUR_TOKEN",
     "vtcUrlHint": "請貼上從 VTC 手機應用程式取得的網址",
+    "howToGetUrl": "這條網址怎麼取得？ →",
     "semester": "學期",
     "semester1": "第1學期",
     "semester2": "第2學期",
@@ -334,6 +337,20 @@
     "studentCardSignIn": "請先登入，才可查看院校學生證。",
     "studentCardSignInAction": "登入",
     "loginSecurity": "登入及安全性",
+    "passkeys": "密碼金鑰",
+    "passkeysDescription": "改用裝置本身的指紋、面容、螢幕鎖或保安金鑰登入，不必再輸入密碼。",
+    "passkeysEmpty": "尚未加入密碼金鑰。加入一個就可以免密碼登入。",
+    "passkeysHint": "密碼金鑰只能在儲存它的裝置或密碼管理器上使用，所以每部常用裝置都要各加一個。在這裡移除後，該裝置就不能再用密碼金鑰登入。",
+    "passkeyUnnamed": "未命名的密碼金鑰",
+    "passkeyAddedOn": "於 {date} 加入",
+    "passkeyNamePlaceholder": "為這個密碼金鑰命名（可選）",
+    "passkeyAdd": "加入密碼金鑰",
+    "passkeyWorking": "處理中…",
+    "passkeyRemove": "移除密碼金鑰",
+    "passkeyAdded": "已加入密碼金鑰。",
+    "passkeyDeleted": "已移除密碼金鑰。",
+    "passkeyAddFailed": "無法加入密碼金鑰，可能是取消了系統提示。",
+    "passkeyDeleteFailed": "無法移除該密碼金鑰。",
     "loginSecurityDescription": "管理電郵及密碼登入。",
     "storedData": "已儲存資料",
     "storedDataDescription": "管理已同步的課表及出席資料。",
@@ -364,6 +381,8 @@
     "apiPlayground": "API 測試台",
     "apiPlaygroundDescription": "用已儲存的 token 發送 VTC 請求並查看 JSON。",
     "openApiPlayground": "開啟測試台",
+    "vtcUrlGuide": "取得 VTC 網址",
+    "openVtcUrlGuide": "查看教學",
     "gracePeriodTitle": "出席率",
     "gracePeriodNavDescription": "用於出席警告及缺課計算器的百分比。",
     "gracePeriodDescription": "當已出席時數達到已進行課堂時數的此百分比或以上，即視為達標。預設為 80%。更改此值不會改寫已儲存的出席紀錄。",
@@ -501,6 +520,7 @@
     "navLabel": "頁面導覽",
     "navFeatures": "功能",
     "navDemo": "示範",
+    "navHowTo": "使用教學",
     "preview": {
       "nextClass": "下一堂課",
       "courseTitle": "畢業專題習作",
@@ -622,6 +642,111 @@
       "noTimetable": "帳戶尚未同步 VTC 時間表。",
       "server": "服務器出錯，建議重試後才在小工具顯示錯誤。"
     }
+  },
+  "tokenDocs": {
+    "eyebrow": "設定教學",
+    "title": "取得你的 VTC 網址",
+    "subtitle": "同步需要 VTC@HK 應用程式其中一個請求網址。用 HTTPS 擷取工具，在自己的手機上讀出來即可。",
+    "safetyTitle": "開始之前",
+    "safety": {
+      "own": "只在自己的裝置上擷取自己的帳戶。",
+      "secret": "這個權杖等同你的 VTC 帳戶。不要貼到群組，也不要上載帶有該網址的截圖。",
+      "expiry": "權杖會過期。當同步提示權杖已過期，用同樣方法再擷取一次就可以。",
+      "off": "完成後請關閉擷取用的 VPN 或 Wi-Fi 代理，因為手機其他流量同樣會經過它。"
+    },
+    "whyTitle": "為甚麼要自己複製",
+    "whyBody": "VTC@HK 透過 ADFS 登入，最後會轉向只有該應用程式能接收的 vtchk://oauth 連結，所以網站無法代你完成登入。應用程式登入後，它每個請求的查詢字串都帶著同一個權杖，因此只要複製其中一個請求，本網站就夠用了。",
+    "whyNote": "這樣做與應用程式本身存取 VTC 伺服器的方式沒有分別，你只是讀取自己裝置對自己帳戶的流量。",
+    "lookForTitle": "你要找的是甚麼",
+    "lookForBody": "任何帶有 token= 而又指向 mobile.vtc.edu.hk 的請求都可以。打開時間表版面就會產生這一個：",
+    "urlLabel": "請求範例",
+    "lookForNote": "把整條網址貼進同步視窗即可，系統會自動讀出權杖。如果你的擷取工具只顯示權杖本身，就直接貼權杖。",
+    "appsTitle": "可以用來擷取的工具",
+    "appsBody": "以下工具都是靠在裝置安裝自己的憑證來讀取 HTTPS。任選一個就夠，不需要全部安裝。",
+    "apps": {
+      "stream": {
+        "platform": "iOS、iPadOS",
+        "note": "App Store 免費下載，iPhone 和 iPad 的首選。"
+      },
+      "proxyman": {
+        "platform": "iOS、macOS、Windows",
+        "note": "可以在手機上執行，也可以當電腦代理。"
+      },
+      "charles": {
+        "platform": "iOS、Android、電腦",
+        "note": "付費，另有限時試用時段。"
+      },
+      "httptoolkit": {
+        "platform": "Android（需配電腦）",
+        "note": "免費，Android 首選，會經 ADB 自動完成手機設定。"
+      },
+      "pcapdroid": {
+        "platform": "Android",
+        "note": "免費且在手機上執行；要讀 HTTPS 需加裝 mitm 模組。"
+      },
+      "mitmproxy": {
+        "platform": "電腦代理",
+        "note": "免費，命令列操作。"
+      }
+    },
+    "iosTitle": "iPhone 或 iPad",
+    "ios": {
+      "install": "從 App Store 安裝 Stream（Proxyman for iOS 用法相同），然後開始錄製一次。",
+      "vpn": "iOS 會要求新增 VPN 設定，請允許：工具要靠它才看得到流量，資料不會因此離開你的手機。",
+      "cert": "工具提示時安裝它的憑證，安裝後會出現在「設定 → 一般 → VPN 與裝置管理」。",
+      "trust": "到「設定 → 一般 → 關於本機 → 憑證信任設定」開啟完全信任。少了這一步，所有 VTC 請求都會是無法解讀的內容。",
+      "capture": "開始錄製，打開 VTC@HK 登入，然後進入時間表。",
+      "copy": "找出指向 mobile.vtc.edu.hk 的請求，複製完整網址，貼進同步視窗。",
+      "stop": "完成後停止錄製並移除 VPN 描述檔。"
+    },
+    "androidTitle": "Android",
+    "android": {
+      "adb": "開啟「開發人員選項 → USB 偵錯」，再用線把手機接上電腦。",
+      "connect": "在 HTTP Toolkit 選擇「Android device via ADB」，它會自動安裝憑證並開始擷取。",
+      "ondevice": "沒有電腦？PCAPdroid 加上 mitm 模組，單靠手機也能做到同樣的事。",
+      "capture": "打開 VTC@HK 載入時間表，然後在請求清單中尋找 mobile.vtc.edu.hk。",
+      "copy": "複製完整的請求網址，貼進同步視窗。",
+      "root": "Android 7 之後，只有應用程式主動允許時才會信任使用者安裝的憑證。如果 VTC@HK 的請求失敗或無法解讀，請改用模擬器或已 root 的手機，把憑證裝成系統憑證。"
+    },
+    "desktopTitle": "改用電腦代理",
+    "desktop": {
+      "network": "讓手機和電腦連上同一個 Wi-Fi，然後啟動 Charles、Proxyman 或 mitmproxy。",
+      "proxy": "在手機該 Wi-Fi 的設定中，把 HTTP 代理設為電腦的內網 IP 和工具所用的連接埠。",
+      "cert": "在手機開啟工具的憑證頁面（chls.pro/ssl、proxy.man/ssl 或 mitm.it），安裝後按上面所述設為信任。",
+      "ssl": "為 mobile.vtc.edu.hk:443 開啟 HTTPS 解密，否則你只會看到連線紀錄而看不到網址。",
+      "copy": "打開 VTC@HK，然後把 mobile.vtc.edu.hk 的請求網址貼進同步視窗。",
+      "undo": "用完記得把 Wi-Fi 代理關掉，否則電腦一休眠手機就會斷網。"
+    },
+    "troubleTitle": "如果不成功",
+    "trouble": {
+      "encrypted": {
+        "symptom": "只看到 CONNECT 紀錄，沒有網址",
+        "fix": "該網域未開啟 HTTPS 解密，或者憑證已安裝但未設為完全信任。"
+      },
+      "nothing": {
+        "symptom": "應用程式顯示網絡錯誤，也沒有任何請求",
+        "fix": "它拒絕了擷取憑證。請改用模擬器或已 root 的裝置，把憑證裝成系統憑證。"
+      },
+      "invalid": {
+        "symptom": "同步時提示權杖無效",
+        "fix": "網址被截斷，或權杖已經過期，重新擷取一個新的請求即可。"
+      },
+      "othercmd": {
+        "symptom": "只看到 cmd=checkAccessToken",
+        "fix": "那個也可以用。任何帶 token= 的請求，權杖都是同一個。"
+      }
+    },
+    "table": {
+      "app": "工具",
+      "platform": "平台",
+      "notes": "備註",
+      "symptom": "你看到的情況",
+      "fix": "處理方法"
+    },
+    "syncLink": "返回日曆",
+    "apiDocsLink": "課堂 API 參考",
+    "pick": "建議",
+    "iosPick": "iPhone 和 iPad 建議用 Stream：App Store 免費下載，直接在裝置上錄製，不需要電腦。"
   },
   "nav": {
     "label": "主要導覽",

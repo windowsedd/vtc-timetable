@@ -5626,6 +5626,35 @@ body {
 	color: var(--text-tertiary) !important;
 	font-size: 12px !important;
 }
+.api-docs-steps {
+	margin: 14px 0 0;
+	padding-left: 20px;
+	/* Preflight strips list markers; the step order is the point here. */
+	list-style: decimal;
+	color: var(--text-secondary);
+	font-size: 13px;
+	line-height: 1.7;
+}
+.api-docs-steps li { padding-left: 4px; }
+.api-docs-pick {
+	display: inline-block;
+	margin-left: 8px;
+	padding: 2px 7px;
+	border-radius: 999px;
+	background: var(--accent-soft);
+	color: var(--accent-blue);
+	font-size: 10px;
+	font-weight: 750;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	vertical-align: middle;
+}
+.api-docs-steps li + li { margin-top: 8px; }
+.api-docs-steps::marker,
+.api-docs-steps li::marker {
+	color: var(--text-tertiary);
+	font-weight: 700;
+}
 .api-docs-footer {
 	display: flex;
 	flex-wrap: wrap;
@@ -5675,6 +5704,49 @@ body {
 	font-size: 11px;
 	line-height: 1.5;
 }
+
+/* Registered passkeys: one row per credential, with the add form underneath. */
+.settings-passkey-list {
+	display: grid;
+	gap: 8px;
+	margin: 0 0 16px;
+	padding: 0;
+	list-style: none;
+}
+.settings-passkey-list li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px 14px;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-lg);
+	background: var(--bg-subtle);
+}
+.settings-passkey-name {
+	overflow-wrap: anywhere;
+	color: var(--foreground);
+	font-size: 13px;
+	font-weight: 700;
+}
+.settings-passkey-meta {
+	margin-top: 2px;
+	color: var(--text-tertiary);
+	font-size: 11px;
+}
+.settings-passkey-empty {
+	margin: 0 0 16px;
+	color: var(--text-tertiary);
+	font-size: 13px;
+	line-height: 1.6;
+}
+.settings-passkey-add {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+.settings-passkey-add .input-field { flex: 1; min-width: 200px; }
 
 /* Course picker in the manual attendance-entry sheet. */
 .attendance-modal-course {

@@ -36,6 +36,8 @@
     "welcomeBack": "Welcome Back",
     "signInSubtitle": "Sign in to access your VTC calendar",
     "continueWithDiscord": "Continue with Discord",
+    "continueWithPasskey": "Sign in with a passkey",
+    "passkeyFailed": "That passkey sign-in did not complete. Try again, or use another method.",
     "signingIn": "Signing in...",
     "orContinueWith": "Or continue with",
     "email": "Email",
@@ -268,6 +270,7 @@
     "vtcApiUrl": "VTC API URL",
     "vtcUrlPlaceholder": "https://mobile.vtc.edu.hk/api?...&token=YOUR_TOKEN",
     "vtcUrlHint": "Paste the URL from your VTC mobile app",
+    "howToGetUrl": "How do I get this URL? →",
     "semester": "Semester",
     "semester1": "Semester 1",
     "semester2": "Semester 2",
@@ -334,6 +337,20 @@
     "studentCardSignIn": "Sign in to view your campus student card.",
     "studentCardSignInAction": "Sign in",
     "loginSecurity": "Login & Security",
+    "passkeys": "Passkeys",
+    "passkeysDescription": "Sign in with your device — fingerprint, face, screen lock, or a security key — instead of a password.",
+    "passkeysEmpty": "No passkeys yet. Add one to sign in without your password.",
+    "passkeysHint": "A passkey works only on the device or password manager that holds it, so add one on each device you sign in from. Removing one here signs that device out of passkey login.",
+    "passkeyUnnamed": "Unnamed passkey",
+    "passkeyAddedOn": "Added {date}",
+    "passkeyNamePlaceholder": "Name this passkey (optional)",
+    "passkeyAdd": "Add passkey",
+    "passkeyWorking": "Working…",
+    "passkeyRemove": "Remove passkey",
+    "passkeyAdded": "Passkey added.",
+    "passkeyDeleted": "Passkey removed.",
+    "passkeyAddFailed": "Could not add that passkey. The prompt may have been dismissed.",
+    "passkeyDeleteFailed": "Could not remove that passkey.",
     "loginSecurityDescription": "Manage email and password login.",
     "storedData": "Stored Data",
     "storedDataDescription": "Manage synchronized timetable and attendance data.",
@@ -364,6 +381,8 @@
     "apiPlayground": "API playground",
     "apiPlaygroundDescription": "Try VTC requests with your saved token and inspect the JSON.",
     "openApiPlayground": "Open playground",
+    "vtcUrlGuide": "Getting your VTC URL",
+    "openVtcUrlGuide": "Read the guide",
     "gracePeriodTitle": "Attendance passing rate",
     "gracePeriodNavDescription": "The percentage used for attendance warnings and the skipping calculator.",
     "gracePeriodDescription": "Classes are treated as meeting the requirement when attended time is at or above this percentage of conducted class time. The default is 80%. Changing this does not rewrite stored attendance records.",
@@ -501,6 +520,7 @@
     "navLabel": "Landing navigation",
     "navFeatures": "Features",
     "navDemo": "Demo",
+    "navHowTo": "How to use",
     "preview": {
       "nextClass": "Next class",
       "courseTitle": "Final Year Project",
@@ -622,6 +642,111 @@
       "noTimetable": "The account has not synced a VTC timetable yet.",
       "server": "Something failed on our side. Retry before showing an error in the widget."
     }
+  },
+  "tokenDocs": {
+    "eyebrow": "Setup guide",
+    "title": "Getting your VTC URL",
+    "subtitle": "Syncing needs one request URL from the VTC@HK app. You read it off your own phone with an HTTPS capture app.",
+    "safetyTitle": "Before you start",
+    "safety": {
+      "own": "Capture your own account only, on a device you own.",
+      "secret": "That token is your VTC account. Never paste it in a group chat or post a screenshot with the URL in it.",
+      "expiry": "Tokens expire. When syncing reports an expired token, capture a fresh request the same way.",
+      "off": "Turn the capture VPN or Wi-Fi proxy off when you are done — everything else on the phone runs through it too."
+    },
+    "whyTitle": "Why you have to copy it",
+    "whyBody": "The VTC@HK app signs in through ADFS and finishes on a vtchk://oauth link that only the app itself can receive, so a website cannot run that sign-in for you. Once the app is signed in, every call it makes carries the same token in the query string — copying one of those requests is all this site needs.",
+    "whyNote": "This does not touch VTC's servers any differently from the app itself. You are reading your own device's traffic to your own account.",
+    "lookForTitle": "What you are looking for",
+    "lookForBody": "Any request to mobile.vtc.edu.hk that carries token= will do. Opening the timetable screen produces this one:",
+    "urlLabel": "Example request",
+    "lookForNote": "Paste the whole URL into the sync box — it reads the token out for you. If your capture app only shows the token value, paste that on its own instead.",
+    "appsTitle": "Apps that can do the capture",
+    "appsBody": "All of these read HTTPS by installing their own certificate on the device. Pick one; you do not need several.",
+    "apps": {
+      "stream": {
+        "platform": "iOS, iPadOS",
+        "note": "Free on the App Store. The suggested pick for iPhone and iPad."
+      },
+      "proxyman": {
+        "platform": "iOS, macOS, Windows",
+        "note": "Works on the phone or as a desktop proxy."
+      },
+      "charles": {
+        "platform": "iOS, Android, desktop",
+        "note": "Paid, with a time-limited trial session."
+      },
+      "httptoolkit": {
+        "platform": "Android, via a computer",
+        "note": "Free, and the suggested pick on Android — it sets the phone up itself over ADB."
+      },
+      "pcapdroid": {
+        "platform": "Android",
+        "note": "Free and on-device; reading HTTPS needs its mitm add-on."
+      },
+      "mitmproxy": {
+        "platform": "Desktop proxy",
+        "note": "Free; command line."
+      }
+    },
+    "iosTitle": "iPhone or iPad",
+    "ios": {
+      "install": "Install Stream from the App Store (Proxyman for iOS works the same way), then start a recording once.",
+      "vpn": "iOS asks to add a VPN configuration. Allow it: that is how the app sees the traffic, and nothing leaves your phone because of it.",
+      "cert": "Install the app's certificate when it offers to. It arrives under Settings → General → VPN & Device Management.",
+      "trust": "Turn on full trust in Settings → General → About → Certificate Trust Settings. Skip this and every VTC request stays unreadable.",
+      "capture": "Start recording, open VTC@HK, sign in, and open the timetable.",
+      "copy": "Find a request to mobile.vtc.edu.hk, copy its full URL, and paste it into the sync box.",
+      "stop": "Stop the recording and remove the VPN profile afterwards."
+    },
+    "androidTitle": "Android",
+    "android": {
+      "adb": "Turn on Developer options → USB debugging and plug the phone into your computer.",
+      "connect": "In HTTP Toolkit choose \"Android device via ADB\". It installs its certificate and starts the capture for you.",
+      "ondevice": "No computer? PCAPdroid with its mitm add-on does the same job on the phone alone.",
+      "capture": "Open VTC@HK and load the timetable, then look for mobile.vtc.edu.hk in the request list.",
+      "copy": "Copy the full request URL and paste it into the sync box.",
+      "root": "Android 7 and later only trusts a user-installed certificate when the app opts in. If VTC@HK's requests fail or stay unreadable, run it in an emulator or on a rooted phone, where the certificate can be installed as a system one."
+    },
+    "desktopTitle": "Through a computer instead",
+    "desktop": {
+      "network": "Put the phone and the computer on the same Wi-Fi, then start Charles, Proxyman, or mitmproxy.",
+      "proxy": "On the phone, set that Wi-Fi network's HTTP proxy to the computer's local IP and the port the tool listens on.",
+      "cert": "Open the tool's certificate page on the phone — chls.pro/ssl, proxy.man/ssl, or mitm.it — install it, and trust it as above.",
+      "ssl": "Enable HTTPS decryption for mobile.vtc.edu.hk:443. Without it you only get connection lines, not URLs.",
+      "copy": "Open VTC@HK, then copy the mobile.vtc.edu.hk request URL into the sync box.",
+      "undo": "Set the Wi-Fi proxy back to off afterwards, or the phone loses its connection as soon as the computer sleeps."
+    },
+    "troubleTitle": "If it does not work",
+    "trouble": {
+      "encrypted": {
+        "symptom": "Requests appear as CONNECT lines with no URL",
+        "fix": "HTTPS decryption is off for that host, or the certificate is installed but not fully trusted."
+      },
+      "nothing": {
+        "symptom": "The app shows a network error and no request appears",
+        "fix": "It is refusing the capture certificate. Use an emulator or a rooted device, where it can be a system certificate."
+      },
+      "invalid": {
+        "symptom": "Syncing says the token is invalid",
+        "fix": "The URL was cut short, or the token has already expired. Capture a fresh request."
+      },
+      "othercmd": {
+        "symptom": "You only see cmd=checkAccessToken",
+        "fix": "That one is fine. Any request with token= in it carries the same token."
+      }
+    },
+    "table": {
+      "app": "App",
+      "platform": "Platform",
+      "notes": "Notes",
+      "symptom": "What you see",
+      "fix": "What to do"
+    },
+    "syncLink": "Back to the calendar",
+    "apiDocsLink": "Classes API reference",
+    "pick": "Suggested",
+    "iosPick": "Stream is the one to reach for on iPhone and iPad: it is free on the App Store, records on the device itself, and needs no computer."
   },
   "nav": {
     "label": "Main navigation",

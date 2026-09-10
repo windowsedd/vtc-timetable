@@ -1,3 +1,4 @@
+import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { nextCookies } from "better-auth/next-js";
@@ -12,6 +13,13 @@ const client = new MongoClient(process.env.MONGODB_URI!, {
 });
 const db = client.db();
 
+// WebAuthn is bound to one hostname: the relying-party id has to be the site's
+// own domain, and the plugin's default ("localhost") only works in dev. Both
+// come from the URL better-auth is already configured with.
+const baseURL = process.env.BETTER_AUTH_URL ?? process.env.AUTH_URL ?? process.env.APP_URL;
+const passkeyOrigin = baseURL?.replace(/\/$/, "");
+const passkeyRpID = passkeyOrigin ? new URL(passkeyOrigin).hostname : "localhost";
+
 void client.connect().then(async () => {
 	await ensurePartialUniqueDiscordIdIndex(db.collection("users"));
 }).catch((error) => {
@@ -20,7 +28,7 @@ void client.connect().then(async () => {
 
 export const auth = betterAuth({
 	secret: process.env.AUTH_SECRET ?? process.env.BETTER_AUTH_SECRET,
-	baseURL: process.env.BETTER_AUTH_URL ?? process.env.AUTH_URL ?? process.env.APP_URL,
+	baseURL,
 	database: mongodbAdapter(db),
 	advanced: {
 		ipAddress: {
@@ -62,5 +70,9 @@ export const auth = betterAuth({
 			locale: { type: "string", required: false, input: false },
 		},
 	},
-	plugins: [nextCookies()],
+	// `nextCookies` has to stay last: it writes the cookies the plugins above set.
+	plugins: [
+		passkey({ rpID: passkeyRpID, rpName: "VTC Timetable", origin: passkeyOrigin }),
+		nextCookies(),
+	],
 });

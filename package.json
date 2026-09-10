@@ -13,9 +13,10 @@
     "lint:eslint": "eslint"
   },
   "dependencies": {
+    "@better-auth/passkey": "^1.7.3",
     "@scalar/api-reference-react": "^0.9.65",
     "bcryptjs": "^3.0.3",
-    "better-auth": "^1.7.2",
+    "better-auth": "^1.7.3",
     "dayjs": "^1.11.23",
     "framer-motion": "^13.1.1",
     "ics": "^3.12.0",

@@ -1,6 +1,7 @@
 "use client";
 
 import SyncSuccess from "@/components/SyncSuccess";
+import { Link } from "@/lib/navigation";
 import { getDefaultSemester, getSemesterDisplayLabel } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
@@ -260,6 +261,9 @@ export default function SyncModal({
 							<p className="text-xs text-[var(--text-tertiary)] mt-2">
 								{t("vtcUrlHint")}
 							</p>
+							<Link href="/docs/token" className="mt-2 inline-block text-xs font-semibold text-accent-blue hover:underline">
+								{t("howToGetUrl")}
+							</Link>
 						</div>
 
 						{autoDetectedRow}

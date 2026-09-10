@@ -1,3 +1,4 @@
+import DocsCodeBlock from "@/components/DocsCodeBlock";
 import { MAX_RANGE_DAYS } from "@/lib/classes-api";
 import { Link } from "@/lib/navigation";
 import type { Metadata } from "next";
@@ -71,15 +72,6 @@ func loadClasses(token: String) async throws -> ClassesResponse {
     return try JSONDecoder().decode(ClassesResponse.self, from: data)
 }`;
 
-function CodeBlock({ label, code }: { label: string; code: string }) {
-	return (
-		<figure className="api-docs-code">
-			<figcaption>{label}</figcaption>
-			<pre><code>{code}</code></pre>
-		</figure>
-	);
-}
-
 export default async function ClassesApiDocsPage() {
 	const t = await getTranslations("apiDocs");
 
@@ -110,9 +102,9 @@ export default async function ClassesApiDocsPage() {
 				<section className="api-docs-section">
 					<h2>{t("authTitle")}</h2>
 					<p>{t("authBody")}</p>
-					<CodeBlock label={t("requestLabel")} code={REQUEST_SAMPLE} />
+					<DocsCodeBlock label={t("requestLabel")} code={REQUEST_SAMPLE} />
 					<p className="api-docs-note">{t("authQuery")}</p>
-					<CodeBlock label={t("urlLabel")} code={URL_SAMPLE} />
+					<DocsCodeBlock label={t("urlLabel")} code={URL_SAMPLE} />
 					<Link href="/settings#api" className="api-docs-link">{t("tokenLink")}</Link>
 				</section>
 
@@ -143,7 +135,7 @@ export default async function ClassesApiDocsPage() {
 
 				<section className="api-docs-section">
 					<h2>{t("responseTitle")}</h2>
-					<CodeBlock label={t("responseLabel")} code={RESPONSE_SAMPLE} />
+					<DocsCodeBlock label={t("responseLabel")} code={RESPONSE_SAMPLE} />
 					<ul className="api-docs-notes">
 						{notes.map((note) => <li key={note}>{t(`notes.${note}`)}</li>)}
 					</ul>
@@ -173,8 +165,8 @@ export default async function ClassesApiDocsPage() {
 
 				<section className="api-docs-section">
 					<h2>{t("examplesTitle")}</h2>
-					<CodeBlock label="curl" code={CURL_SAMPLE} />
-					<CodeBlock label={t("swiftLabel")} code={SWIFT_SAMPLE} />
+					<DocsCodeBlock label="curl" code={CURL_SAMPLE} />
+					<DocsCodeBlock label={t("swiftLabel")} code={SWIFT_SAMPLE} />
 					<p className="api-docs-note">{t("widgetNote")}</p>
 				</section>
 

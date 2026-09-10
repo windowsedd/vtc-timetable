@@ -12,10 +12,11 @@ import {
 import SessionSplash from "@/components/SessionSplash";
 import Sidebar from "@/components/Sidebar";
 import TopNavbar from "@/components/TopNavbar";
-import { ArrowLeft, Database, HardDrive, KeyRound, Languages, LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
+import type { Passkey } from "@better-auth/passkey";
+import { ArrowLeft, Database, Fingerprint, HardDrive, KeyRound, Languages, LockKeyhole, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
-import { useSession } from "@/lib/auth-client";
+import { authClient, useSession } from "@/lib/auth-client";
 import { Link, useRouter } from "@/lib/navigation";
 import { writeLocaleCookie } from "@/lib/locale-cookie";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -107,6 +108,12 @@ export default function SettingsPage() {
 	// Below 768px the rail is an off-canvas drawer, so it needs the same toggle
 	// the other routes get from AppShell — without it this page has no nav at all.
 	const [sidebarOpen, setSidebarOpen] = useState(false);
+
+	// Passkeys registered on this account.
+	const [passkeys, setPasskeys] = useState<Passkey[]>([]);
+	const [passkeyName, setPasskeyName] = useState("");
+	const [passkeyBusy, setPasskeyBusy] = useState(false);
+	const [passkeyMessage, setPasskeyMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
 	// Clear VTC data (danger zone) state — two-step confirm
 	const [clearConfirm, setClearConfirm] = useState(false);
@@ -245,6 +252,45 @@ export default function SettingsPage() {
 			}
 		}
 		setLoading(false);
+	};
+
+	const loadPasskeys = useCallback(async () => {
+		const { data } = await authClient.passkey.listUserPasskeys();
+		setPasskeys(data ?? []);
+	}, []);
+
+	useEffect(() => {
+		if (!session) return;
+		void loadPasskeys();
+	}, [session, loadPasskeys]);
+
+	const handleAddPasskey = async () => {
+		setPasskeyBusy(true);
+		setPasskeyMessage(null);
+		const result = await authClient.passkey.addPasskey({ name: passkeyName.trim() || undefined });
+		setPasskeyBusy(false);
+		// A cancelled or dismissed browser prompt fails the same way as a real
+		// error, so the message stays neutral instead of blaming the device.
+		if (result?.error) {
+			setPasskeyMessage({ type: "error", text: t("passkeyAddFailed") });
+			return;
+		}
+		setPasskeyName("");
+		setPasskeyMessage({ type: "success", text: t("passkeyAdded") });
+		await loadPasskeys();
+	};
+
+	const handleDeletePasskey = async (id: string) => {
+		setPasskeyBusy(true);
+		setPasskeyMessage(null);
+		const { error } = await authClient.passkey.deletePasskey({ id });
+		setPasskeyBusy(false);
+		if (error) {
+			setPasskeyMessage({ type: "error", text: t("passkeyDeleteFailed") });
+			return;
+		}
+		setPasskeyMessage({ type: "success", text: t("passkeyDeleted") });
+		await loadPasskeys();
 	};
 
 	const handleEmailPasswordSubmit = async (e: React.FormEvent) => {
@@ -407,6 +453,9 @@ export default function SettingsPage() {
 					<a href="#security" onClick={(event) => jumpToSection(event, "security")}>
 						{t("loginSecurity")}
 					</a>
+					<a href="#passkeys" onClick={(event) => jumpToSection(event, "passkeys")}>
+						{t("passkeys")}
+					</a>
 					<a href="#api" onClick={(event) => jumpToSection(event, "api")}>
 						{t("apiAccess")}
 					</a>
@@ -517,6 +566,13 @@ export default function SettingsPage() {
 							<span className="settings-row-label">{t("apiPlayground")}</span>
 							<Link href="/api" className="btn-secondary text-xs">
 								{t("openApiPlayground")}
+							</Link>
+						</div>
+
+						<div className="settings-row">
+							<span className="settings-row-label">{t("vtcUrlGuide")}</span>
+							<Link href="/docs/token" className="btn-secondary text-xs">
+								{t("openVtcUrlGuide")}
 							</Link>
 						</div>
 
@@ -830,6 +886,74 @@ export default function SettingsPage() {
 								}
 							</button>
 						</form>
+					</div>
+				</motion.div>
+
+				{/* ── Passkeys ────────────────────────────── */}
+				<motion.div id="passkeys" className="settings-section scroll-mt-24" variants={itemVariants}>
+					<div className="settings-section-header">
+						<span className="settings-section-icon" aria-hidden="true"><Fingerprint /></span>
+						<div className="min-w-0">
+							<h2>{t("passkeys")}</h2>
+							<p>{t("passkeysDescription")}</p>
+						</div>
+					</div>
+					<div className="settings-section-body">
+						{passkeys.length === 0 ? (
+							<p className="settings-passkey-empty">{t("passkeysEmpty")}</p>
+						) : (
+							<ul className="settings-passkey-list">
+								{passkeys.map((key) => (
+									<li key={key.id}>
+										<div className="min-w-0">
+											<p className="settings-passkey-name">{key.name || t("passkeyUnnamed")}</p>
+											<p className="settings-passkey-meta">
+												{t("passkeyAddedOn", { date: new Date(key.createdAt).toLocaleDateString(locale) })}
+											</p>
+										</div>
+										<button
+											type="button"
+											onClick={() => handleDeletePasskey(key.id)}
+											disabled={passkeyBusy}
+											className="btn-icon"
+											aria-label={t("passkeyRemove")}
+										>
+											<Trash2 className="w-4 h-4" aria-hidden="true" />
+										</button>
+									</li>
+								))}
+							</ul>
+						)}
+
+						<div className="settings-passkey-add">
+							<input
+								type="text"
+								value={passkeyName}
+								onChange={(e) => setPasskeyName(e.target.value)}
+								className="input-field"
+								placeholder={t("passkeyNamePlaceholder")}
+								maxLength={60}
+							/>
+							<button
+								type="button"
+								onClick={handleAddPasskey}
+								disabled={passkeyBusy}
+								className="btn-primary"
+							>
+								{passkeyBusy ? t("passkeyWorking") : t("passkeyAdd")}
+							</button>
+						</div>
+
+						{passkeyMessage && (
+							<div className={`px-4 py-3 rounded-lg text-sm font-medium ${passkeyMessage.type === "success"
+								? "bg-[var(--success-bg)] text-[var(--success)] border border-[rgba(62,207,142,0.15)]"
+								: "bg-[var(--error-bg)] text-[var(--error)] border border-[rgba(245,83,83,0.15)]"
+							}`}>
+								{passkeyMessage.text}
+							</div>
+						)}
+
+						<p className="settings-api-token-hint">{t("passkeysHint")}</p>
 					</div>
 				</motion.div>
 

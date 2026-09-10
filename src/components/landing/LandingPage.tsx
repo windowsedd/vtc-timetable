@@ -2,6 +2,7 @@
 
 import SignInModal from "@/components/SignInModal";
 import TutorialSimulation from "@/components/TutorialSimulation";
+import { Link } from "@/lib/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import LandingCTA from "./LandingCTA";
@@ -33,6 +34,7 @@ export default function LandingPage() {
 					<nav className="landing-nav-links" aria-label={t("navLabel")}>
 						<a href="#features">{t("navFeatures")}</a>
 						<a href="#demo">{t("navDemo")}</a>
+						<Link href="/docs/token">{t("navHowTo")}</Link>
 					</nav>
 
 					<button type="button" onClick={openSignIn} className="btn-primary landing-nav-cta">
