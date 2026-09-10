@@ -349,7 +349,7 @@
     "passkeyRemove": "Remove passkey",
     "passkeyAdded": "Passkey added.",
     "passkeyDeleted": "Passkey removed.",
-    "passkeyAddFailed": "Could not add that passkey. The prompt may have been dismissed.",
+    "passkeyAddFailed": "Could not add that passkey.",
     "passkeyDeleteFailed": "Could not remove that passkey.",
     "loginSecurityDescription": "Manage email and password login.",
     "storedData": "Stored Data",

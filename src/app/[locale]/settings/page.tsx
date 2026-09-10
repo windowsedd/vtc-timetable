@@ -113,7 +113,10 @@ export default function SettingsPage() {
 	const [passkeys, setPasskeys] = useState<Passkey[]>([]);
 	const [passkeyName, setPasskeyName] = useState("");
 	const [passkeyBusy, setPasskeyBusy] = useState(false);
-	const [passkeyMessage, setPasskeyMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+	// `detail` carries the reason the passkey plugin reported — cancelled prompt,
+	// already-registered authenticator, a server refusal — which is the only way
+	// to tell those apart from the outside.
+	const [passkeyMessage, setPasskeyMessage] = useState<{ type: "success" | "error"; text: string; detail?: string } | null>(null);
 
 	// Clear VTC data (danger zone) state — two-step confirm
 	const [clearConfirm, setClearConfirm] = useState(false);
@@ -272,7 +275,7 @@ export default function SettingsPage() {
 		// A cancelled or dismissed browser prompt fails the same way as a real
 		// error, so the message stays neutral instead of blaming the device.
 		if (result?.error) {
-			setPasskeyMessage({ type: "error", text: t("passkeyAddFailed") });
+			setPasskeyMessage({ type: "error", text: t("passkeyAddFailed"), detail: result.error.message });
 			return;
 		}
 		setPasskeyName("");
@@ -286,7 +289,7 @@ export default function SettingsPage() {
 		const { error } = await authClient.passkey.deletePasskey({ id });
 		setPasskeyBusy(false);
 		if (error) {
-			setPasskeyMessage({ type: "error", text: t("passkeyDeleteFailed") });
+			setPasskeyMessage({ type: "error", text: t("passkeyDeleteFailed"), detail: error.message });
 			return;
 		}
 		setPasskeyMessage({ type: "success", text: t("passkeyDeleted") });
@@ -950,6 +953,9 @@ export default function SettingsPage() {
 								: "bg-[var(--error-bg)] text-[var(--error)] border border-[rgba(245,83,83,0.15)]"
 							}`}>
 								{passkeyMessage.text}
+								{passkeyMessage.detail ? (
+									<span className="settings-passkey-detail">{passkeyMessage.detail}</span>
+								) : null}
 							</div>
 						)}
 

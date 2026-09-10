@@ -18,6 +18,8 @@ export default function SignInModal({ isOpen, onClose }: SignInModalProps) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    // What the passkey plugin reported, kept apart from the friendly line above it.
+    const [errorDetail, setErrorDetail] = useState("");
 
     if (!isOpen) return null;
 
@@ -28,12 +30,14 @@ export default function SignInModal({ isOpen, onClose }: SignInModalProps) {
 
     const handlePasskeySignIn = async () => {
         setError("");
+        setErrorDetail("");
         setIsLoading(true);
         const { error: passkeyError } = await signIn.passkey();
         if (passkeyError) {
-            // A cancelled prompt reports the same way as a failure, so this stays
-            // a plain "try again" rather than claiming the passkey is unknown.
+            // The headline stays neutral — a dismissed prompt and an unknown
+            // passkey arrive the same way — with the plugin's own reason under it.
             setError(t("passkeyFailed"));
+            setErrorDetail(passkeyError.message ?? "");
             setIsLoading(false);
             return;
         }
@@ -45,6 +49,7 @@ export default function SignInModal({ isOpen, onClose }: SignInModalProps) {
     const handleCredentialsSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        setErrorDetail("");
         setIsLoading(true);
 
         try {
@@ -141,6 +146,7 @@ export default function SignInModal({ isOpen, onClose }: SignInModalProps) {
                     {error && (
                         <div className="rounded-md border border-error/30 bg-error/10 px-3 py-2">
                             <p className="text-sm text-error">{error}</p>
+                            {errorDetail && <p className="mt-1 text-xs text-error/80">{errorDetail}</p>}
                         </div>
                     )}
 

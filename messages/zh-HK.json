@@ -349,7 +349,7 @@
     "passkeyRemove": "移除密碼金鑰",
     "passkeyAdded": "已加入密碼金鑰。",
     "passkeyDeleted": "已移除密碼金鑰。",
-    "passkeyAddFailed": "無法加入密碼金鑰，可能是取消了系統提示。",
+    "passkeyAddFailed": "無法加入密碼金鑰。",
     "passkeyDeleteFailed": "無法移除該密碼金鑰。",
     "loginSecurityDescription": "管理電郵及密碼登入。",
     "storedData": "已儲存資料",
