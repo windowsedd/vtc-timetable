@@ -91,7 +91,7 @@ export default async function ClassesApiDocsPage() {
 		{ status: "500", meaning: t("errors.server") },
 	];
 
-	const notes = ["labels", "utc", "inclusive", "cancelled", "cache"] as const;
+	const notes = ["labels", "utc", "inclusive", "status", "cancelled", "cache"] as const;
 
 	return (
 		<main className="api-docs-page">

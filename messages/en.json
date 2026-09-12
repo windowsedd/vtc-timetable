@@ -631,6 +631,7 @@
       "meaning": "Meaning"
     },
     "notes": {
+      "status": "Status is calculated at generatedAt: an UPCOMING class is returned as FINISHED once its end time has arrived. This does not change the stored event.",
       "utc": "Times are ISO-8601 carrying the +08:00 offset, so they read as the time on the timetable and still parse as an instant.",
       "inclusive": "The range covers whole days, so a class starting late on the last day is included.",
       "labels": "dateLabel and timeLabel are already formatted in the language the account reads the app in, so a widget can print them as they are.",

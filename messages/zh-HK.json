@@ -631,6 +631,7 @@
       "meaning": "意義"
     },
     "notes": {
+      "status": "狀態以 generatedAt 的時間計算：UPCOMING 課堂到達結束時間後會以 FINISHED 傳回，但不會修改已儲存的課堂資料。",
       "utc": "時間為 ISO-8601 並帶 +08:00 時區，顯示出來就是時間表上的時間，也仍然可以當成時間點解析。",
       "inclusive": "範圍以整日計算，最後一天晚上開始的課堂也會包含。",
       "labels": "dateLabel 與 timeLabel 已依帳戶的使用語言格式化，小工具可以直接顯示。",
