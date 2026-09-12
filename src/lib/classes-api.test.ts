@@ -121,9 +121,69 @@ describe("classes payload", () => {
 		expect(payload.classes[0].status).toBe("CANCELED");
 	});
 
+	test("derives finished status from the request time", () => {
+		const payload = buildClassesPayload(
+			[
+				classAt("BEFORE", "2026-09-09T03:30:00.000Z", "2026-09-09T04:30:00.000Z"),
+				classAt("AT_END", "2026-09-09T00:30:00.000Z", NOW.toISOString()),
+				classAt("ENDED", "2026-09-08T23:30:00.000Z", "2026-09-09T00:30:00.000Z"),
+			],
+			range,
+			NOW,
+		);
+
+		expect(payload.classes.map(({ courseCode, status }) => ({ courseCode, status }))).toEqual([
+			{ courseCode: "ENDED", status: "FINISHED" },
+			{ courseCode: "AT_END", status: "FINISHED" },
+			{ courseCode: "BEFORE", status: "UPCOMING" },
+		]);
+	});
+
+	test("preserves every explicit non-upcoming status after the end time", () => {
+		for (const status of ["FINISHED", "CANCELED", "ABSENT", "RESCHEDULED"]) {
+			const payload = buildClassesPayload(
+				[classAt(status, "2026-09-08T23:30:00.000Z", "2026-09-09T00:30:00.000Z", status)],
+				range,
+				NOW,
+			);
+			expect(payload.classes[0].status).toBe(status);
+		}
+	});
+
+	test("does not select finished or canceled future classes as next", () => {
+		const payload = buildClassesPayload(
+			[
+				classAt("FINISHED", "2026-09-09T03:30:00.000Z", "2026-09-09T04:30:00.000Z", "FINISHED"),
+				classAt("CANCELED", "2026-09-09T04:30:00.000Z", "2026-09-09T05:30:00.000Z", "CANCELED"),
+				classAt("NEXT", "2026-09-09T05:30:00.000Z", "2026-09-09T06:30:00.000Z"),
+			],
+			range,
+			NOW,
+		);
+
+		expect(payload.next?.courseCode).toBe("NEXT");
+	});
+
+	test("lists a historical range with no current or next class", () => {
+		const payload = buildClassesPayload(
+			[classAt("PAST", "2026-09-08T01:30:00.000Z", "2026-09-08T03:30:00.000Z")],
+			{
+				from: new Date("2026-09-07T16:00:00.000Z"),
+				to: new Date("2026-09-08T16:00:00.000Z"),
+				fromDay: "2026-09-08",
+				toDay: "2026-09-08",
+			},
+			NOW,
+		);
+
+		expect(payload.classes[0].status).toBe("FINISHED");
+		expect(payload.current).toBeNull();
+		expect(payload.next).toBeNull();
+	});
+
 	test("writes times with the Hong Kong offset, not a UTC Z", () => {
 		expect(toLocalIso(new Date("2026-09-09T01:30:00.000Z"))).toBe("2026-09-09T09:30:00+08:00");
-		const mapped = toApiClass(classAt("ITE3102", "2026-09-09T01:30:00.000Z", "2026-09-09T03:30:00.000Z"));
+		const mapped = toApiClass(classAt("ITE3102", "2026-09-09T01:30:00.000Z", "2026-09-09T03:30:00.000Z"), NOW);
 		expect(mapped.startsAt).toBe("2026-09-09T09:30:00+08:00");
 		expect(mapped.endsAt).toBe("2026-09-09T11:30:00+08:00");
 		// Still a real instant for any ISO-8601 parser.
@@ -131,22 +191,22 @@ describe("classes payload", () => {
 	});
 
 	test("labels the date and time in the account's language", () => {
-		const hk = toApiClass(classAt("ITP4903", "2026-09-10T02:30:00.000Z", "2026-09-10T04:00:00.000Z"), "zh-HK");
+		const hk = toApiClass(classAt("ITP4903", "2026-09-10T02:30:00.000Z", "2026-09-10T04:00:00.000Z"), NOW, "zh-HK");
 		expect(hk.dateLabel).toBe("9\u670810\u65e5\u9031\u56db");
 		expect(hk.timeLabel).toBe("\u4e0a\u534810:30 \u2013 \u4e0b\u534812:00");
 
-		const en = toApiClass(classAt("ITP4903", "2026-09-10T02:30:00.000Z", "2026-09-10T04:00:00.000Z"), "en");
+		const en = toApiClass(classAt("ITP4903", "2026-09-10T02:30:00.000Z", "2026-09-10T04:00:00.000Z"), NOW, "en");
 		expect(en.dateLabel).toBe("Thu, Sep 10");
 		expect(en.timeLabel).toBe("10:30 AM \u2013 12:00 PM");
 
 		// English is the fallback when the account has no locale set.
-		expect(toApiClass(classAt("X", "2026-09-10T02:30:00.000Z", "2026-09-10T04:00:00.000Z")).dateLabel).toBe("Thu, Sep 10");
+		expect(toApiClass(classAt("X", "2026-09-10T02:30:00.000Z", "2026-09-10T04:00:00.000Z"), NOW).dateLabel).toBe("Thu, Sep 10");
 		expect(formatTimeRange(new Date("2026-09-10T02:30:00.000Z"), new Date("2026-09-10T04:00:00.000Z"), "en"))
 			.toBe("10:30 AM \u2013 12:00 PM");
 	});
 
 	test("maps a stored event onto the widget shape", () => {
-		const mapped = toApiClass(classAt("ITP4903", "2026-09-09T01:30:00.000Z", "2026-09-09T03:30:00.000Z"));
+		const mapped = toApiClass(classAt("ITP4903", "2026-09-09T01:30:00.000Z", "2026-09-09T03:30:00.000Z"), NOW);
 		expect(mapped).toMatchObject({
 			courseCode: "ITP4903",
 			lessonType: "Lecture",

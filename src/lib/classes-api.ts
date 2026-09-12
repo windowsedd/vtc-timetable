@@ -124,7 +124,15 @@ export function resolveClassRange(
 	return { range: { from: start, to: end, fromDay, toDay } };
 }
 
-export function toApiClass(event: ClassSource, locale: ApiLocale = "en"): ApiClass {
+function statusForRequest(event: ClassSource, now: Date): string {
+	const storedStatus = event.status ?? "UPCOMING";
+	if (storedStatus === "UPCOMING" && new Date(event.endTime).getTime() <= now.getTime()) {
+		return "FINISHED";
+	}
+	return storedStatus;
+}
+
+export function toApiClass(event: ClassSource, now: Date, locale: ApiLocale = "en"): ApiClass {
 	const startsAt = new Date(event.startTime);
 	const endsAt = new Date(event.endTime);
 	const semester = typeof event.semester === "number" ? event.semester : Number(event.semester);
@@ -140,7 +148,7 @@ export function toApiClass(event: ClassSource, locale: ApiLocale = "en"): ApiCla
 		dateLabel: formatCompactClassDate(startsAt, locale) ?? "",
 		timeLabel: formatTimeRange(startsAt, endsAt, locale),
 		minutes: Math.max(0, Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000)),
-		status: event.status ?? "UPCOMING",
+		status: statusForRequest(event, now),
 		semester: Number.isFinite(semester) ? semester : null,
 		colorIndex: event.colorIndex ?? 0,
 	};
@@ -158,10 +166,10 @@ export function buildClassesPayload(
 	locale: ApiLocale = "en",
 ): ClassesPayload {
 	const classes = events
-		.map((event) => toApiClass(event, locale))
+		.map((event) => toApiClass(event, now, locale))
 		.toSorted((a, b) => a.startsAt.localeCompare(b.startsAt));
 	const nowMs = now.getTime();
-	const live = classes.filter((item) => item.status !== "CANCELED");
+	const live = classes.filter((item) => item.status !== "CANCELED" && item.status !== "FINISHED");
 
 	return {
 		timezone: APP_TIME_ZONE,
