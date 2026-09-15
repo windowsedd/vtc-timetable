@@ -1,23 +1,27 @@
 ﻿"use client";
 
 import { Link, usePathname } from "@/lib/navigation";
-import { BookOpen, BookOpenText, CalendarClock, CalendarCog, CalendarDays, ClipboardCheck, CreditCard, HelpCircle, LayoutGrid, Loader2, RefreshCw, Settings, Table2 } from "lucide-react";
+import { BookOpen, BookOpenText, CalendarClock, CalendarCog, CalendarDays, ClipboardCheck, CreditCard, Code2, LogOut, Monitor, HelpCircle, LayoutGrid, Loader2, RefreshCw, Settings, Table2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
+import { signOut } from "@/lib/auth-client";
 
 // Persistent sidebar navigation. lucide-react, one family, size-5 in the rail.
 const NAV_ITEMS = [
-	{ href: "/", key: "home", Icon: LayoutGrid },
-	{ href: "/timetable", key: "timetable", Icon: CalendarDays },
-	{ href: "/attendance", key: "attendance", Icon: ClipboardCheck },
-	{ href: "/attendance-grid", key: "attendanceGrid", Icon: Table2 },
-	{ href: "/dashboard#moodle", key: "moodle", Icon: BookOpen },
-	{ href: "/events", key: "events", Icon: CalendarCog },
-	{ href: "/tools", key: "tools", Icon: CalendarClock },
-	{ href: "/student-card", key: "studentCard", Icon: CreditCard },
-	{ href: "/docs/api", key: "docs", Icon: BookOpenText },
+	{ href: "/", key: "home", en: "Home", Icon: LayoutGrid },
+	{ href: "/timetable", key: "timetable", en: "Timetable", Icon: CalendarDays },
+	{ href: "/attendance", key: "attendance", en: "Attendance", Icon: ClipboardCheck },
+	{ href: "/attendance-grid", key: "attendanceGrid", en: "Attendance hours", Icon: Table2 },
+	{ href: "/dashboard#moodle", key: "moodle", en: "Moodle", Icon: BookOpen },
+	{ href: "/events", key: "events", en: "Manage Events", Icon: CalendarCog },
+	{ href: "/tools", key: "tools", en: "Calendar Tools", Icon: CalendarClock },
+	{ href: "/student-card", key: "studentCard", en: "Student card", Icon: CreditCard },
+	{ href: "/docs/api", key: "docs", en: "API docs", Icon: BookOpenText },
 ] as const;
 
-const SETTINGS_ITEM = { href: "/settings", key: "settings", Icon: Settings } as const;
+const API_ITEM = { href: "/api", key: "api", en: "API playground", Icon: Code2 } as const;
+
+const SETTINGS_ITEM = { href: "/settings", key: "settings", en: "Settings", Icon: Settings } as const;
 
 interface SidebarProps {
 	onSyncClick: () => void;
@@ -37,12 +41,14 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 	const tSync = useTranslations("sync");
 	const tNav = useTranslations("nav");
 	const pathname = usePathname();
+	const tSettings = useTranslations("settings");
+	const { theme, setTheme } = useTheme();
 
 
 
 
-	// One nav row: icon and localized label.
-	const renderNavLink = (item: { href: string; key: string; Icon: typeof LayoutGrid }) => {
+	// One nav row: icon, localized label, and optional English gloss.
+	const renderNavLink = (item: { href: string; key: string; en: string; Icon: typeof LayoutGrid }) => {
 		const isActive = pathname === item.href;
 		const label = tNav(item.key);
 		const { Icon } = item;
@@ -56,6 +62,7 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 				<Icon aria-hidden="true" />
 				<span className="sidebar-nav-label">
 					{label}
+					{label === item.en ? null : <span aria-hidden="true">{item.en}</span>}
 				</span>
 			</Link>
 		);
@@ -86,6 +93,23 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 				<div className="sidebar-footer border-t border-[var(--sidebar-border)] space-y-2">
 					{/* Settings sits at the foot of the rail, as in the campus reference. */}
 					{renderNavLink(SETTINGS_ITEM)}
+					{renderNavLink(API_ITEM)}
+					<button type="button" className="sidebar-nav-link" onClick={() => {
+						const themes = ["light", "dark", "system"];
+						setTheme(themes[(themes.indexOf(theme || "system") + 1) % themes.length]);
+					}}>
+						<Monitor aria-hidden="true" />
+						<span className="sidebar-nav-label">{tSettings("theme")}</span>
+					</button>
+					{user && (
+						<button type="button" className="sidebar-nav-link" onClick={async () => {
+							await signOut();
+							window.location.href = "/";
+						}}>
+							<LogOut aria-hidden="true" />
+							<span className="sidebar-nav-label">{tSettings("logout")}</span>
+						</button>
+					)}
 
 					{/* Sync button — only available once signed in */}
 					{user && (

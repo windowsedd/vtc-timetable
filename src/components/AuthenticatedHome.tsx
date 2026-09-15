@@ -19,7 +19,6 @@ import SignInModal from "@/components/SignInModal";
 import SyncModal, { type SyncProgress } from "@/components/SyncModal";
 import TutorialSimulation from "@/components/TutorialSimulation";
 import TopNavbar from "@/components/TopNavbar";
-import UserDropdown from "@/components/UserDropdown";
 import TimetableCalendar from "@/components/TimetableCalendar";
 import TimetableWeek from "@/components/TimetableWeek";
 import NextClassCard from "@/components/NextClassCard";
@@ -500,7 +499,6 @@ export default function AuthenticatedHome({ mode = "home" }: AuthenticatedHomePr
             <TopNavbar
                 onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
                 sidebarOpen={sidebarOpen}
-                user={session.user}
             />
 
             {/* Body: Sidebar + Main */}
@@ -530,11 +528,6 @@ export default function AuthenticatedHome({ mode = "home" }: AuthenticatedHomePr
                     weekDate={date}
                     onSelectEvent={(event) => setSelectedEvent(event)}
                     onNavigateToDate={setDate}
-                    headerActions={
-                        <div className="campus-header-account">
-                            <UserDropdown user={session.user} />
-                        </div>
-                    }
                 />
                 {/* Token Expired Warning Banner */}
                 {showTokenExpiredWarning && (
@@ -570,11 +563,6 @@ export default function AuthenticatedHome({ mode = "home" }: AuthenticatedHomePr
                                     events={filteredEvents}
                                     onSelectEvent={(event) => setSelectedEvent(event)}
                                     onNavigateToDate={setDate}
-                    headerActions={
-                        <div className="campus-header-account">
-                            <UserDropdown user={session.user} />
-                        </div>
-                    }
                                 />
                                 <div id="moodle" className="home-moodle-slot scroll-mt-6">
                                     <MoodleTodoCard limit={5} />

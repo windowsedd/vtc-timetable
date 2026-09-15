@@ -1,19 +1,15 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
-import UserDropdown from "@/components/UserDropdown";
 
 interface TopNavbarProps {
 	onSidebarToggle: () => void;
 	sidebarOpen: boolean;
-	user?: {
-		name?: string | null;
-		image?: string | null;
-	} | null;
+
 }
 
-// On mobile, the account menu sits beside the navigation toggle and brand.
-export default function TopNavbar({ onSidebarToggle, sidebarOpen, user }: TopNavbarProps) {
+// Compact chrome: drawer toggle and brand. Account actions live in the sidebar.
+export default function TopNavbar({ onSidebarToggle, sidebarOpen }: TopNavbarProps) {
 	return (
 		<nav className="top-navbar" aria-label="Application navigation">
 			<div className="top-navbar-start">
@@ -31,11 +27,6 @@ export default function TopNavbar({ onSidebarToggle, sidebarOpen, user }: TopNav
 				</div>
 			</div>
 
-			{user ? (
-				<div className="top-navbar-end">
-					<UserDropdown user={user} />
-				</div>
-			) : null}
 		</nav>
 	);
 }

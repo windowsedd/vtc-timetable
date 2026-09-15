@@ -4,7 +4,6 @@ import { getAuthenticatedHomeData } from "@/app/actions";
 import CampusHeader from "@/components/CampusHeader";
 import Sidebar from "@/components/Sidebar";
 import TopNavbar from "@/components/TopNavbar";
-import UserDropdown from "@/components/UserDropdown";
 import { useRouter } from "@/lib/navigation";
 import type { CalendarEvent } from "@/types/timetable";
 import { useSession } from "@/lib/auth-client";
@@ -47,7 +46,6 @@ export default function AppShell({ children, footer }: AppShellProps) {
 			<TopNavbar
 				onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
 				sidebarOpen={sidebarOpen}
-				user={session?.user}
 			/>
 
 			<div className="flex-1 flex min-h-0 overflow-clip">
@@ -76,11 +74,6 @@ export default function AppShell({ children, footer }: AppShellProps) {
 						<CampusHeader
 							events={events}
 							userName={session?.user?.name}
-							headerActions={session?.user ? (
-								<div className="campus-header-account">
-									<UserDropdown user={session.user} />
-								</div>
-							) : null}
 						/>
 						{children}
 						<footer className="campus-footer">{footer}</footer>
