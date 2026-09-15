@@ -9,7 +9,7 @@ import User from "@/models/User";
  * The bearer token the iOS widget sends to `/api/classes`. It is stored in the
  * clear so the settings panel can show it again for a second device, the same
  * trade-off the calendar share token already makes; revoking is a one-click
- * unset, and the token grants read-only access to class times.
+ * unset, and newly issued tokens grant access to class times and the live student-card QR.
  */
 export type ApiTokenState = {
 	success: boolean;
@@ -41,7 +41,7 @@ export async function regenerateApiToken(): Promise<ApiTokenState> {
 	try {
 		await connectDB();
 		const token = createApiToken();
-		await User.updateOne({ discordId: user.discordId }, { $set: { apiToken: token } });
+		await User.updateOne({ discordId: user.discordId }, { $set: { apiToken: token, apiTokenStudentCardAccess: true } });
 		return { success: true, enabled: true, token };
 	} catch {
 		return { success: false, enabled: false, error: "Could not create an API token" };
@@ -54,7 +54,7 @@ export async function revokeApiToken(): Promise<ApiTokenState> {
 
 	try {
 		await connectDB();
-		await User.updateOne({ discordId: user.discordId }, { $unset: { apiToken: "" } });
+		await User.updateOne({ discordId: user.discordId }, { $unset: { apiToken: "", apiTokenStudentCardAccess: "" } });
 		return { success: true, enabled: false };
 	} catch {
 		return { success: false, enabled: false, error: "Could not revoke your API token" };

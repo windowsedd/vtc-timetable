@@ -1,14 +1,12 @@
 ﻿"use client";
 
 import { Link, usePathname } from "@/lib/navigation";
-import { BookOpen, CalendarClock, CalendarCog, CalendarDays, ClipboardCheck, CreditCard, Code2, LogOut, Monitor, HelpCircle, LayoutGrid, Loader2, RefreshCw, Settings, Table2 } from "lucide-react";
+import { BookOpen, BookOpenText, CalendarClock, CalendarCog, CalendarDays, ClipboardCheck, CreditCard, Code2, LogOut, Monitor, HelpCircle, LayoutGrid, Loader2, RefreshCw, Settings, Table2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { signOut } from "@/lib/auth-client";
 
 // Persistent sidebar navigation. lucide-react, one family, size-5 in the rail.
-// `en` doubles as the reference's secondary English label; it is suppressed when
-// the UI is already in English so the row does not read the same word twice.
 const NAV_ITEMS = [
 	{ href: "/", key: "home", en: "Home", Icon: LayoutGrid },
 	{ href: "/timetable", key: "timetable", en: "Timetable", Icon: CalendarDays },
@@ -18,6 +16,7 @@ const NAV_ITEMS = [
 	{ href: "/events", key: "events", en: "Manage Events", Icon: CalendarCog },
 	{ href: "/tools", key: "tools", en: "Calendar Tools", Icon: CalendarClock },
 	{ href: "/student-card", key: "studentCard", en: "Student card", Icon: CreditCard },
+	{ href: "/docs/api", key: "docs", en: "API docs", Icon: BookOpenText },
 ] as const;
 
 const API_ITEM = { href: "/api", key: "api", en: "API playground", Icon: Code2 } as const;
@@ -39,6 +38,7 @@ interface SidebarProps {
 export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onStartTour }: SidebarProps) {
 	const t = useTranslations("calendar");
 	const tTour = useTranslations("tour");
+	const tSync = useTranslations("sync");
 	const tNav = useTranslations("nav");
 	const pathname = usePathname();
 	const tSettings = useTranslations("settings");
@@ -47,7 +47,7 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 
 
 
-	// One nav row: icon, localized label, and the reference's trailing English gloss.
+	// One nav row: icon, localized label, and optional English gloss.
 	const renderNavLink = (item: { href: string; key: string; en: string; Icon: typeof LayoutGrid }) => {
 		const isActive = pathname === item.href;
 		const label = tNav(item.key);
@@ -117,12 +117,12 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 							{isSyncing ? (
 								<>
 									<Loader2 className="animate-spin h-4 w-4" aria-hidden="true" />
-									Syncing...
+									{tSync("syncing")}
 								</>
 							) : (
 								<>
 									<RefreshCw className="w-4 h-4" aria-hidden="true" />
-									Sync Schedule
+									{tSync("syncSchedule")}
 								</>
 							)}
 						</button>
@@ -146,4 +146,3 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 		</>
 	);
 }
-

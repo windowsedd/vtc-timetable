@@ -1,7 +1,7 @@
 import { createCalendarShareToken } from "@/lib/calendar-share";
 
 /**
- * Personal read-only token for the classes API, used by the iOS widget. Tagged
+ * Personal token for the classes and student-card QR APIs. Tagged
  * with a prefix so one found in a log or a shortcut is recognisable, and so a
  * pasted share-link token is rejected outright rather than silently failing the
  * database lookup.
