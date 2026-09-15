@@ -1,4 +1,4 @@
-// Week-strip helpers for the Monday-to-Friday timetable grid.
+// Week-strip helpers for the Monday-to-Sunday timetable grid.
 // Dates are handled in local time; the calendar stores events as local Date
 // objects built from VTC's Asia/Hong_Kong timestamps.
 
@@ -19,10 +19,16 @@ export function startOfWeek(date: Date): Date {
 	return new Date(day.getTime() + offset * DAY_MS);
 }
 
-/** The five weekdays (Mon-Fri) of the week containing `date`. */
+/** The seven days (Mon-Sun) of the week containing `date`. */
 export function weekdaysOf(date: Date): Date[] {
 	const monday = startOfWeek(date);
-	return Array.from({ length: 5 }, (_, index) => new Date(monday.getTime() + index * DAY_MS));
+	return Array.from({ length: 7 }, (_, index) => new Date(monday.getTime() + index * DAY_MS));
+}
+
+/** Saturday and Sunday, which the grids tint apart from the teaching week. */
+export function isWeekend(date: Date): boolean {
+	const weekday = date.getDay();
+	return weekday === 0 || weekday === 6;
 }
 
 export function isSameDay(a: Date, b: Date): boolean {
@@ -44,6 +50,23 @@ export function isoWeekNumber(date: Date): number {
 	const firstDayNumber = (firstThursday.getDay() + 6) % 7;
 	firstThursday.setDate(firstThursday.getDate() - firstDayNumber + 3);
 	return 1 + Math.round((target.getTime() - firstThursday.getTime()) / (7 * DAY_MS));
+}
+
+/**
+ * Week number within the academic year: the week holding 1 September is week 1.
+ * The dashboard badge reads this, so September starts the year at week 1 rather
+ * than ISO week 36. The calendar keeps `isoWeekNumber`.
+ *
+ * The turnover is measured in whole weeks, not by month, so a late-August
+ * Monday that shares its week with 1 September counts as week 1 too.
+ */
+export function academicWeekNumber(date: Date): number {
+	const weekStart = startOfWeek(date);
+	let anchor = startOfWeek(new Date(date.getFullYear(), 8, 1));
+	if (weekStart.getTime() < anchor.getTime()) {
+		anchor = startOfWeek(new Date(date.getFullYear() - 1, 8, 1));
+	}
+	return 1 + Math.round((weekStart.getTime() - anchor.getTime()) / (7 * DAY_MS));
 }
 
 /** One step of calendar navigation, sized to the view currently on screen. */

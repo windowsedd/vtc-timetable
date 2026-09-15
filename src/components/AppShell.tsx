@@ -8,6 +8,7 @@ import UserDropdown from "@/components/UserDropdown";
 import { useRouter } from "@/lib/navigation";
 import type { CalendarEvent } from "@/types/timetable";
 import { useSession } from "@/lib/auth-client";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 interface AppShellProps {
@@ -25,6 +26,7 @@ interface AppShellProps {
 export default function AppShell({ children, footer }: AppShellProps) {
 	const { data: session } = useSession();
 	const router = useRouter();
+	const tNav = useTranslations("nav");
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const [events, setEvents] = useState<CalendarEvent[]>([]);
 
@@ -41,18 +43,18 @@ export default function AppShell({ children, footer }: AppShellProps) {
 
 
 	return (
-		<div className="dashboard-shell h-screen flex flex-col bg-background overflow-hidden">
+		<div className="dashboard-shell h-screen flex flex-col bg-background overflow-clip">
 			<TopNavbar
 				onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
 				sidebarOpen={sidebarOpen}
 				user={session?.user}
 			/>
 
-			<div className="flex-1 flex overflow-hidden">
+			<div className="flex-1 flex min-h-0 overflow-clip">
 				<button
 					type="button"
 					className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`}
-					aria-label="Close navigation"
+					aria-label={tNav("closeNavigation")}
 					onClick={() => setSidebarOpen(false)}
 				/>
 
@@ -74,13 +76,11 @@ export default function AppShell({ children, footer }: AppShellProps) {
 						<CampusHeader
 							events={events}
 							userName={session?.user?.name}
-							headerActions={
-								session?.user ? (
-									<div className="campus-header-account">
-										<UserDropdown user={session.user} />
-									</div>
-								) : null
-							}
+							headerActions={session?.user ? (
+								<div className="campus-header-account">
+									<UserDropdown user={session.user} />
+								</div>
+							) : null}
 						/>
 						{children}
 						<footer className="campus-footer">{footer}</footer>

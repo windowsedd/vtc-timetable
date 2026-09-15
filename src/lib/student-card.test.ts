@@ -6,6 +6,7 @@ import {
 	formatEnglishCardName,
 	libraryBarcodeCaption,
 	photoDataUrl,
+	studentCardBackground,
 } from "./student-card";
 
 describe("student card formatting", () => {
@@ -19,10 +20,31 @@ describe("student card formatting", () => {
 		expect(formatDeliveryMode("PT")).toBe("Part Time");
 	});
 
-	test("HKIIT campus or IT programme uses the HKIIT brand", () => {
+	test("explicit campus branding takes priority over programme guesses", () => {
 		expect(campusBrandFrom("HKIIT-KT")).toBe("hkiit");
-		expect(campusBrandFrom("IVE-CW", "IT114105")).toBe("hkiit");
-		expect(campusBrandFrom("IVE-TY")).toBe("vtc");
+		expect(campusBrandFrom("IVE-CW", "IT114105")).toBe("ive");
+		expect(campusBrandFrom("YC-KC", "IT114105")).toBe("yc");
+		expect(campusBrandFrom("", "IT114105")).toBe("hkiit");
+		expect(campusBrandFrom("unrecognized")).toBe("vtc");
+		expect(campusBrandFrom("2001.5")).toBe("vtc");
+	});
+
+	test("numeric campus codes select the APK's YC and YCI templates", () => {
+		for (const campus of ["2001", "2002", "2003", "2005", "2006", "2007", "2008", "2009", "2011"]) {
+			expect(campusBrandFrom(campus, "IT114105")).toBe("yc");
+		}
+		expect(campusBrandFrom("2012")).toBe("yci");
+		expect(campusBrandFrom("YCI")).toBe("yci");
+		expect(campusBrandFrom("2004")).toBe("pa");
+		expect(studentCardBackground(campusBrandFrom("2001"))).toBe("/campus/student-cards/yc.webp");
+		expect(studentCardBackground(campusBrandFrom("2012"))).toBe("/campus/student-cards/yci.webp");
+		expect(studentCardBackground(campusBrandFrom("unknown"))).toBeNull();
+	});
+
+	test("other campus codes select the matching bundled backgrounds", () => {
+		for (const [campus, brand] of [["1001", "ive"], ["1009", "ive"], ["3001", "hkdi"], ["6001", "hkiit"], ["5001", "thei"], ["4001", "cci"], ["4201", "cci_ici"], ["4023", "ici"], ["4006", "msti"], ["99999", "sbi"]]) {
+			expect(campusBrandFrom(campus)).toBe(brand);
+		}
 	});
 
 	test("photo becomes a JPEG data URL", () => {
@@ -62,7 +84,9 @@ describe("student card formatting", () => {
 		expect(view.chineseName).toBe("周健鋒");
 		expect(view.deliveryMode).toBe("Full Time");
 		expect(view.barcodeValue).toBe("21882600833491");
-		expect(view.barcodeCaption).toBe("2188  260083349  1  IT114105");
+		expect(view.barcodeCaption).toBe("2188  260083349  1");
+		expect(view.programmeCode).toBe("IT114105");
+		expect(view.studentNumber).toBe("260083349");
 		expect(view.brand).toBe("hkiit");
 		expect(view.photoSrc).toBe("data:image/jpeg;base64,PHOTO");
 	});

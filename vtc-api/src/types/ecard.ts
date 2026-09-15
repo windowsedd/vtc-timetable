@@ -1,4 +1,7 @@
 import type { EcardUserInfo } from "./ecardRegister";
+import type { VtcResponse } from "./common";
+
+export type EcardTimeResponse = VtcResponse<{ currentTime: string } | null>;
 
 /**
  * Response from GET https://ecard-api.vtc.edu.hk/v1/ecard

@@ -13,9 +13,10 @@
     "lint:eslint": "eslint"
   },
   "dependencies": {
+    "@better-auth/passkey": "^1.7.3",
     "@scalar/api-reference-react": "^0.9.65",
     "bcryptjs": "^3.0.3",
-    "better-auth": "^1.7.2",
+    "better-auth": "^1.7.3",
     "dayjs": "^1.11.23",
     "framer-motion": "^13.1.1",
     "ics": "^3.12.0",
@@ -24,6 +25,7 @@
     "mongoose": "^9.9.4",
     "next-intl": "^4.14.0",
     "next-themes": "^0.4.6",
+    "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-big-calendar": "^1.20.0",
     "react-dom": "^19.2.8",
@@ -35,6 +37,7 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.4.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.18",
     "@types/react-big-calendar": "^1.16.3",
     "@types/react-dom": "^19.2.5",

@@ -1,22 +1,23 @@
 ﻿"use client";
 
 import { Link, usePathname } from "@/lib/navigation";
-import { BookOpen, CalendarDays, ClipboardCheck, HelpCircle, LayoutGrid, Loader2, RefreshCw, Settings, Table2 } from "lucide-react";
-import Image from "next/image";
+import { BookOpen, BookOpenText, CalendarClock, CalendarCog, CalendarDays, ClipboardCheck, CreditCard, HelpCircle, LayoutGrid, Loader2, RefreshCw, Settings, Table2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 // Persistent sidebar navigation. lucide-react, one family, size-5 in the rail.
-// `en` doubles as the reference's secondary English label; it is suppressed when
-// the UI is already in English so the row does not read the same word twice.
 const NAV_ITEMS = [
-	{ href: "/", key: "home", en: "Home", Icon: LayoutGrid },
-	{ href: "/timetable", key: "timetable", en: "Timetable", Icon: CalendarDays },
-	{ href: "/attendance", key: "attendance", en: "Attendance", Icon: ClipboardCheck },
-	{ href: "/attendance-grid", key: "attendanceGrid", en: "Attendance hours", Icon: Table2 },
-	{ href: "/dashboard#moodle", key: "moodle", en: "Moodle", Icon: BookOpen },
+	{ href: "/", key: "home", Icon: LayoutGrid },
+	{ href: "/timetable", key: "timetable", Icon: CalendarDays },
+	{ href: "/attendance", key: "attendance", Icon: ClipboardCheck },
+	{ href: "/attendance-grid", key: "attendanceGrid", Icon: Table2 },
+	{ href: "/dashboard#moodle", key: "moodle", Icon: BookOpen },
+	{ href: "/events", key: "events", Icon: CalendarCog },
+	{ href: "/tools", key: "tools", Icon: CalendarClock },
+	{ href: "/student-card", key: "studentCard", Icon: CreditCard },
+	{ href: "/docs/api", key: "docs", Icon: BookOpenText },
 ] as const;
 
-const SETTINGS_ITEM = { href: "/settings", key: "settings", en: "Settings", Icon: Settings } as const;
+const SETTINGS_ITEM = { href: "/settings", key: "settings", Icon: Settings } as const;
 
 interface SidebarProps {
 	onSyncClick: () => void;
@@ -33,14 +34,15 @@ interface SidebarProps {
 export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onStartTour }: SidebarProps) {
 	const t = useTranslations("calendar");
 	const tTour = useTranslations("tour");
+	const tSync = useTranslations("sync");
 	const tNav = useTranslations("nav");
 	const pathname = usePathname();
 
 
 
 
-	// One nav row: icon, localized label, and the reference's trailing English gloss.
-	const renderNavLink = (item: { href: string; key: string; en: string; Icon: typeof LayoutGrid }) => {
+	// One nav row: icon and localized label.
+	const renderNavLink = (item: { href: string; key: string; Icon: typeof LayoutGrid }) => {
 		const isActive = pathname === item.href;
 		const label = tNav(item.key);
 		const { Icon } = item;
@@ -54,7 +56,6 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 				<Icon aria-hidden="true" />
 				<span className="sidebar-nav-label">
 					{label}
-					{label === item.en ? null : <span aria-hidden="true">{item.en}</span>}
 				</span>
 			</Link>
 		);
@@ -67,7 +68,7 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 				{/* Brand — the desktop shell's only logo lockup. */}
 				<div className="sidebar-heading">
 					<Link href="/" className="sidebar-brand">
-						<Image src="/vtc-timetable.svg" alt="" width={44} height={44} aria-hidden="true" />
+						<img src="/vtc-timetable.svg" alt="" width={44} height={44} aria-hidden="true" />
 						<span className="min-w-0">
 							<span className="sidebar-brand-title">VTC Timetable</span>
 							<span className="sidebar-brand-subtitle">{t("calendarHeader")}</span>
@@ -92,12 +93,12 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 							{isSyncing ? (
 								<>
 									<Loader2 className="animate-spin h-4 w-4" aria-hidden="true" />
-									Syncing...
+									{tSync("syncing")}
 								</>
 							) : (
 								<>
 									<RefreshCw className="w-4 h-4" aria-hidden="true" />
-									Sync Schedule
+									{tSync("syncSchedule")}
 								</>
 							)}
 						</button>
@@ -121,4 +122,3 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 		</>
 	);
 }
-

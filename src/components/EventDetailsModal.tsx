@@ -1,11 +1,22 @@
 "use client";
 
 import { CalendarEvent } from "@/types/timetable";
-import { APP_TIME_ZONE, formatClassDate } from "@/lib/event-date";
+import { APP_TIME_ZONE, formatCompactClassDate } from "@/lib/event-date";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { AlertTriangle, Ban, Check, Pencil, UserX, X } from "lucide-react";
+import { LINE_COLORS } from "@/lib/colors";
+import { useState, type CSSProperties } from "react";
 import { updateEventDetails, setEventStatus, finishCourseEarly, toggleEventAttendance } from "@/app/actions";
 import { resolveMoodleActivityUrl, resolveMoodleCourseUrl } from "@/lib/moodle-links";
+
+/** Status values map onto the copy in the `event` namespace. */
+const STATUS_LABEL_KEYS: Record<string, string> = {
+    UPCOMING: "upcoming",
+    FINISHED: "finished",
+    CANCELED: "canceled",
+    RESCHEDULED: "rescheduled",
+    ABSENT: "absent",
+};
 
 interface EventDetailsModalProps {
     event: CalendarEvent | null;
@@ -30,7 +41,7 @@ export default function EventDetailsModal({
 
     if (!isOpen || !event) return null;
 
-    const classDate = formatClassDate(event.start, locale);
+    const classDate = formatCompactClassDate(event.start, locale);
 
     const handleClose = () => {
         setIsClosing(true);
@@ -141,9 +152,7 @@ export default function EventDetailsModal({
 
     // ── Moodle Deadline Modal ──────────────────────────────────────
     if (event.resource?.eventType === "deadline") {
-        const dueDate = event.start.toLocaleDateString("en-US", {
-            weekday: "short", month: "short", day: "numeric", year: "numeric",
-        });
+        const dueDate = formatCompactClassDate(event.start, locale);
         const dueTime = formatTime(event.start);
         const isPast = event.start < new Date();
 
@@ -246,368 +255,170 @@ export default function EventDetailsModal({
         );
     }
     // ── End Deadline Modal ─────────────────────────────────────────
+    const lineColor = LINE_COLORS[event.resource?.colorIndex ?? 0] ?? LINE_COLORS[0];
+    const statusKey = STATUS_LABEL_KEYS[status] ?? "upcoming";
+    const totalMinutes = Math.max(0, Math.round((event.end.getTime() - event.start.getTime()) / 60_000));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const durationLabel = hours && minutes
+        ? tEvent("durationHourMinute", { hours, minutes })
+        : hours
+            ? tEvent("durationHour", { hours })
+            : tEvent("durationMinute", { minutes: totalMinutes });
+
+    const startEditing = () => {
+        setEditStartTime(startInputVal);
+        setEditEndTime(endInputVal);
+        setIsEditing(true);
+    };
 
     return (
         <div className={`modal-overlay ${isClosing ? "modal-closing" : ""}`} onClick={handleClose}>
             <div
-                className={`modal-content max-w-md ${isClosing ? "modal-closing" : ""}`}
+                className={`modal-content class-modal ${isClosing ? "modal-closing" : ""}`}
+                style={{ "--class-line": lineColor } as CSSProperties}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1 pr-4">
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <h2 className="font-display text-lg font-semibold text-[var(--foreground)]">
-                                {event.resource?.courseCode}
-                            </h2>
-                            {event.resource?.isAdjusted && (
-                                <span className="bg-warning/10 text-warning border border-warning/20 px-2 py-0.5 rounded text-[10px] font-semibold">
-                                    Manually Adjusted
-                                </span>
-                            )}
-                            {isMarkedAbsent && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-error/15 text-error">
-                                    ❌ Absent
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-sm text-[var(--text-secondary)] mt-1">
-                            {event.resource?.courseTitle}
-                        </p>
+                {/* The course keeps the line colour it carries on the calendar, so the
+                    sheet reads as the same class the user just tapped. */}
+                <span className="class-modal-line" aria-hidden="true" />
+
+                <header className="class-modal-header">
+                    <div className="min-w-0">
+                        <h2>{event.resource?.courseCode}</h2>
+                        <p>{event.resource?.courseTitle}</p>
                     </div>
-                    <button onClick={handleClose} className="btn-icon flex-shrink-0">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                            className="w-5 h-5"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M6 18 18 6M6 6l12 12"
-                            />
-                        </svg>
+                    <button onClick={handleClose} className="btn-icon shrink-0" aria-label={tEvent("close")}>
+                        <X aria-hidden="true" />
                     </button>
+                </header>
+
+                <div className="class-modal-chips">
+                    <span className={`class-modal-status is-${statusKey}`}>{tEvent(statusKey)}</span>
+                    {event.resource?.isAdjusted && (
+                        <span className="class-modal-chip">{tEvent("manuallyAdjusted")}</span>
+                    )}
                 </div>
 
-                {/* Body */}
-                <div className="space-y-4 mb-6">
-                    {classDate && (
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-[var(--calendar-header-bg)] flex items-center justify-center">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={1.5}
-                                    stroke="currentColor"
-                                    className="w-4 h-4 text-[var(--text-secondary)]"
-                                    aria-hidden="true"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
-                                    />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">
-                                    {tEvent("date")}
-                                </p>
-                                <p className="text-sm font-medium">{classDate}</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Time */}
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[var(--calendar-header-bg)] flex items-center justify-center">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-4 h-4 text-[var(--text-secondary)]"
-                                aria-hidden="true"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-                                />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">
-                                {tEvent("time")}
-                            </p>
-                            {isEditing ? (
-                                <div className="flex items-center gap-2 mt-1">
-                                    <input
-                                        type="time"
-                                        defaultValue={startInputVal}
-                                        onChange={(e) => setEditStartTime(e.target.value)}
-                                        className="px-2 py-1 bg-[var(--background)] border border-[var(--calendar-border)] rounded-md text-sm"
-                                    />
-                                    <span>-</span>
-                                    <input
-                                        type="time"
-                                        defaultValue={endInputVal}
-                                        onChange={(e) => setEditEndTime(e.target.value)}
-                                        className="px-2 py-1 bg-[var(--background)] border border-[var(--calendar-border)] rounded-md text-sm"
-                                    />
-                                </div>
-                            ) : (
-                                <p className="text-sm font-medium">
-                                    {startTime} - {endTime}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Location */}
-                    {event.resource?.location && (
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-[var(--calendar-header-bg)] flex items-center justify-center">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={1.5}
-                                    stroke="currentColor"
-                                    className="w-4 h-4 text-[var(--text-secondary)]"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                                    />
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"
-                                    />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">
-                                    Location
-                                </p>
-                                <p className="text-sm font-medium">
-                                    {event.resource.location}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Lecturer */}
-                    {event.resource?.lecturer && (
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-[var(--calendar-header-bg)] flex items-center justify-center">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={1.5}
-                                    stroke="currentColor"
-                                    className="w-4 h-4 text-[var(--text-secondary)]"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-                                    />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">
-                                    Lecturer
-                                </p>
-                                <p className="text-sm font-medium">
-                                    {event.resource.lecturer}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Lesson Type */}
-                    {event.resource?.lessonType && (
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-[var(--calendar-header-bg)] flex items-center justify-center">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={1.5}
-                                    stroke="currentColor"
-                                    className="w-4 h-4 text-[var(--text-secondary)]"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5"
-                                    />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">
-                                    Type
-                                </p>
-                                <p className="text-sm font-medium">
-                                    {event.resource.lessonType}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Status Badge */}
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[var(--calendar-header-bg)] flex items-center justify-center">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-4 h-4 text-[var(--text-secondary)]"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-                                />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">
-                                Status
-                            </p>
-                            <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status === "FINISHED"
-                                    ? "bg-overlay text-text-secondary"
-                                    : status === "CANCELED"
-                                        ? "bg-error/15 text-error"
-                                        : status === "RESCHEDULED"
-                                            ? "bg-accent-blue/15 text-accent-blue"
-                                            : "bg-success/15 text-success"
-                                    }`}
-                            >
-                                {status.charAt(0) + status.slice(1).toLowerCase()}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Footer - Conditional based on FINISHED vs UPCOMING */}
-                <div className="flex flex-col gap-3">
+                {/* When it runs and for how long: the two things the sheet is opened for. */}
+                <section className="class-modal-run">
+                    <p className="class-modal-day">{classDate}</p>
                     {isEditing ? (
-                        /* Edit Mode */
-                        <div className="flex items-center gap-2">
-                            <button onClick={handleEditTime} disabled={isLoading} className="btn-primary flex-1">
-                                Save
+                        <div className="class-modal-rail">
+                            <input
+                                type="time"
+                                className="class-modal-time-input"
+                                defaultValue={startInputVal}
+                                onChange={(e) => setEditStartTime(e.target.value)}
+                                aria-label={tEvent("startTime")}
+                            />
+                            <span className="class-modal-track" aria-hidden="true" />
+                            <input
+                                type="time"
+                                className="class-modal-time-input"
+                                defaultValue={endInputVal}
+                                onChange={(e) => setEditEndTime(e.target.value)}
+                                aria-label={tEvent("endTime")}
+                            />
+                        </div>
+                    ) : (
+                        <div className="class-modal-rail">
+                            <time className="class-modal-time" dateTime={event.start.toISOString()}>{startTime}</time>
+                            <span className="class-modal-track"><em>{durationLabel}</em></span>
+                            <time className="class-modal-time" dateTime={event.end.toISOString()}>{endTime}</time>
+                        </div>
+                    )}
+                </section>
+
+                <dl className="class-modal-facts">
+                    {event.resource?.location && (
+                        <div>
+                            <dt>{tEvent("location")}</dt>
+                            <dd>{event.resource.location}</dd>
+                        </div>
+                    )}
+                    {event.resource?.lecturer && (
+                        <div>
+                            <dt>{tEvent("lecturer")}</dt>
+                            <dd>{event.resource.lecturer}</dd>
+                        </div>
+                    )}
+                    {event.resource?.lessonType && (
+                        <div>
+                            <dt>{tEvent("type")}</dt>
+                            <dd>{event.resource.lessonType}</dd>
+                        </div>
+                    )}
+                </dl>
+
+                {(isEditing || !isPast || status !== "FINISHED") && (
+                <div className="class-modal-actions">
+                    {isEditing ? (
+                        <div className="class-modal-action-row">
+                            <button onClick={handleEditTime} disabled={isLoading} className="class-modal-btn is-primary">
+                                {tEvent("save")}
                             </button>
-                            <button onClick={() => setIsEditing(false)} className="btn-secondary flex-1">
-                                Cancel
+                            <button onClick={() => setIsEditing(false)} className="class-modal-btn">
+                                {tEvent("cancel")}
                             </button>
                         </div>
                     ) : isPast ? (
-                        /* FINISHED (Past) Event Actions */
-                        <>
-                            {status !== "FINISHED" && (
-                                <>
-                                    <div className="flex items-center gap-2">
-                                        {/* Mark as Absent Toggle */}
-                                        <button
-                                            onClick={handleToggleAttendance}
-                                            disabled={isLoading || status === "CANCELED"}
-                                            className={`flex-1 text-sm py-2.5 rounded-xl font-semibold transition-all flex items-center justify-center gap-1.5 ${isMarkedAbsent
-                                                ? 'bg-success/10 text-success border border-success/25 hover:bg-success/20'
-                                                : 'bg-warning/10 text-warning border border-warning/25 hover:bg-warning/20'
-                                                }`}
-                                        >
-                                            {isMarkedAbsent ? '✅ Present' : '❌ Absent'}
-                                        </button>
-
-                                        {/* Void Class (Cancel for past) */}
-                                        <button
-                                            onClick={handleCancelClass}
-                                            disabled={isLoading || status === "CANCELED"}
-                                            className={`flex-1 text-sm py-2.5 rounded-xl font-semibold border transition-colors ${status === "CANCELED"
-                                                ? 'bg-overlay text-text-tertiary border-border'
-                                                : 'bg-line-3/10 text-line-3 border-line-3/25 hover:bg-line-3/20'
-                                                }`}
-                                        >
-                                            {status === "CANCELED" ? "🚫 Voided" : "🚫 Void Class"}
-                                        </button>
-                                    </div>
-
-                                    {/* Edit Time */}
+                        status !== "FINISHED" && (
+                            <>
+                                <div className="class-modal-action-row">
                                     <button
-                                        onClick={() => {
-                                            setEditStartTime(startInputVal);
-                                            setEditEndTime(endInputVal);
-                                            setIsEditing(true);
-                                        }}
-                                        className="w-full py-2 px-4 rounded-xl text-sm font-medium text-[var(--text-secondary)] border border-[var(--calendar-border)] hover:bg-overlay transition-colors"
+                                        onClick={handleToggleAttendance}
+                                        disabled={isLoading || status === "CANCELED"}
+                                        className={`class-modal-btn ${isMarkedAbsent ? "is-positive" : "is-warning"}`}
                                     >
-                                        ✏️ Edit Time
+                                        {isMarkedAbsent ? <Check aria-hidden="true" /> : <UserX aria-hidden="true" />}
+                                        {isMarkedAbsent ? tEvent("markPresentBtn") : tEvent("markAbsentBtn")}
                                     </button>
-                                </>
-                            )}
-                        </>
+                                    <button
+                                        onClick={handleCancelClass}
+                                        disabled={isLoading || status === "CANCELED"}
+                                        className="class-modal-btn is-danger"
+                                    >
+                                        <Ban aria-hidden="true" />
+                                        {status === "CANCELED" ? tEvent("voided") : tEvent("voidClass")}
+                                    </button>
+                                </div>
+                                <button onClick={startEditing} className="class-modal-btn">
+                                    <Pencil aria-hidden="true" />
+                                    {tEvent("editTime")}
+                                </button>
+                            </>
+                        )
                     ) : (
-                        /* UPCOMING (Future) Event Actions */
                         <>
-                            <div className="flex items-center gap-2">
-                                {/* Cancel Class */}
+                            <div className="class-modal-action-row">
+                                <button onClick={startEditing} className="class-modal-btn">
+                                    <Pencil aria-hidden="true" />
+                                    {tEvent("editTime")}
+                                </button>
                                 <button
                                     onClick={handleCancelClass}
                                     disabled={isLoading || status === "CANCELED"}
-                                    className={`flex-1 text-sm py-2.5 rounded-xl font-semibold border transition-colors ${status === "CANCELED"
-                                        ? 'bg-error/10 text-error border-error/25'
-                                        : 'bg-transparent text-error border-error/25 hover:bg-error/10'
-                                        }`}
+                                    className="class-modal-btn is-danger"
                                 >
-                                    {status === "CANCELED" ? "🚫 Canceled" : "🚫 Cancel Class"}
-                                </button>
-
-                                {/* Edit Time */}
-                                <button
-                                    onClick={() => {
-                                        setEditStartTime(startInputVal);
-                                        setEditEndTime(endInputVal);
-                                        setIsEditing(true);
-                                    }}
-                                    className="flex-1 text-sm py-2.5 rounded-xl font-medium text-[var(--text-secondary)] border border-[var(--calendar-border)] hover:bg-overlay transition-colors"
-                                >
-                                    ✏️ Edit Time
+                                    <Ban aria-hidden="true" />
+                                    {status === "CANCELED" ? tEvent("canceled") : tEvent("cancelClass")}
                                 </button>
                             </div>
 
-                            {/* Finish Course Early */}
-                            <div className="pt-3 border-t border-[var(--sidebar-border)]">
-                                <button
-                                    onClick={handleFinishEarly}
-                                    disabled={isLoading}
-                                    className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-error border border-error/25 hover:bg-error/10 transition-all flex items-center justify-center gap-2"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                                    </svg>
-                                    Finish Course Early
+                            {/* Reaches every later session of the course, so it sits apart
+                                from the two actions that touch only this class. */}
+                            <div className="class-modal-danger">
+                                <button onClick={handleFinishEarly} disabled={isLoading} className="class-modal-btn is-danger">
+                                    <AlertTriangle aria-hidden="true" />
+                                    {tEvent("finishCourseEarly")}
                                 </button>
-                                <p className="text-[10px] text-[var(--text-tertiary)] text-center mt-2 px-4 leading-tight">
-                                    This will mark ALL future sessions of this course as finished.
-                                </p>
+                                <p>{tEvent("finishCourseEarlyHint")}</p>
                             </div>
                         </>
                     )}
                 </div>
+                )}
             </div>
         </div>
     );

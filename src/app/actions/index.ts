@@ -59,12 +59,18 @@ export {
 } from "./calendar-share";
 export type { CalendarShareState } from "./calendar-share";
 
+// Widget API token
+export { getApiTokenState, regenerateApiToken, revokeApiToken } from "./api-token";
+export type { ApiTokenState } from "./api-token";
+
 // ── Moodle ───────────────────────────────────────────
 export { getMoodleDeadlines } from "./moodle";
 
 // ── User ─────────────────────────────────────────────
 export { checkStoredToken, getEcard, getPrintQuota, getProgrammeInfo, getStudentCard, registerEcard, saveUserLocale } from "./user";
 export type { EcardCardData } from "./user";
+export { getStudentCardQr } from "./student-card-qr";
+export type { StudentCardQrResult } from "./student-card-qr";
 
 // ── Settings ─────────────────────────────────────────
 export { clearVtcData, getUserSettings, resetGracePeriodThreshold, updateEmailPassword, updateGracePeriodThreshold } from "./settings";

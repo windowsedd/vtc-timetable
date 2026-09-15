@@ -1,6 +1,7 @@
 "use client";
 
 import { getCalendarEventDensity, isCalendarActivationKey } from "@/lib/utils";
+import { isWeekend } from "@/lib/week";
 import type { CalendarEvent } from "@/types/timetable";
 import dayjs from "dayjs";
 import "dayjs/locale/zh-hk";
@@ -12,9 +13,13 @@ import CalendarEventCard from "./CalendarEventCard";
 import TimetableAgenda from "./TimetableAgenda";
 import TimetableMonthGrid from "./TimetableMonthGrid";
 import TimetableWeek from "./TimetableWeek";
-import UpcomingClasses from "./UpcomingClasses";
 
 const localizer = dayjsLocalizer(dayjs);
+
+// Saturday and Sunday columns take the weekend hover tint. In the time grid the
+// day column is the element the pointer actually lands on, so a plain `:hover`
+// on it works.
+const dayPropGetter = (day: Date) => (isWeekend(day) ? { className: "calendar-weekend" } : {});
 
 interface TimetableCalendarProps {
 	events: CalendarEvent[];
@@ -23,6 +28,8 @@ interface TimetableCalendarProps {
 	onViewChange: (view: View) => void;
 	onNavigate: (date: Date) => void;
 	onSelectEvent?: (event: CalendarEvent) => void;
+	/** The class the details modal is open on, outlined in whichever view shows it. */
+	selectedEvent?: CalendarEvent | null;
 	locale?: string;
 }
 
@@ -33,6 +40,7 @@ export default function TimetableCalendar({
 	onViewChange,
 	onNavigate,
 	onSelectEvent,
+	selectedEvent,
 	locale = "en",
 }: TimetableCalendarProps) {
 	const tEvent = useTranslations("event");
@@ -78,17 +86,15 @@ export default function TimetableCalendar({
 		// The card-grid views size to their content and let the page scroll;
 		// only the time-grid calendar needs to fill the workspace height.
 		<div className={`flex-1 flex flex-col ${isCardGrid ? "" : "h-full"}`}>
-			<UpcomingClasses events={events} onSelect={(event) => onSelectEvent?.(event)} />
-
 			{/* Month and week are plain grids of class cards rather than
 			    react-big-calendar's layouts, which cannot show course code, room and
 			    status per class. Day stays on the time-grid calendar. */}
 			{view === Views.MONTH ? (
-				<TimetableMonthGrid events={events} date={date} onSelectEvent={onSelectEvent} />
+				<TimetableMonthGrid events={events} date={date} onSelectEvent={onSelectEvent} selectedEvent={selectedEvent} />
 			) : view === Views.AGENDA ? (
-				<TimetableAgenda events={events} date={date} onSelectEvent={onSelectEvent} />
+				<TimetableAgenda events={events} date={date} onSelectEvent={onSelectEvent} selectedEvent={selectedEvent} />
 			) : view === Views.WORK_WEEK ? (
-				<TimetableWeek events={events} date={date} onSelectEvent={onSelectEvent} />
+				<TimetableWeek events={events} date={date} onSelectEvent={onSelectEvent} selectedEvent={selectedEvent} />
 			) : (
 			<div className="calendar-surface flex-1 bg-surface overflow-hidden">
 				<Calendar
@@ -108,6 +114,7 @@ export default function TimetableCalendar({
 					min={minTime}
 					max={maxTime}
 					eventPropGetter={eventPropGetter}
+					dayPropGetter={dayPropGetter}
 					onSelectEvent={onSelectEvent}
 					onKeyPressEvent={handleKeyPressEvent}
 					selectable

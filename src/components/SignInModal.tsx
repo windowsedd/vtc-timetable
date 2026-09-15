@@ -1,5 +1,6 @@
 "use client";
 
+import { KeyRound } from "lucide-react";
 import { useRouter } from "@/lib/navigation";
 import { signIn } from "@/lib/auth-client";
 import { useTranslations } from "next-intl";
@@ -17,6 +18,8 @@ export default function SignInModal({ isOpen, onClose }: SignInModalProps) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    // What the passkey plugin reported, kept apart from the friendly line above it.
+    const [errorDetail, setErrorDetail] = useState("");
 
     if (!isOpen) return null;
 
@@ -25,9 +28,28 @@ export default function SignInModal({ isOpen, onClose }: SignInModalProps) {
         await signIn.social({ provider: "discord", callbackURL: "/" });
     };
 
+    const handlePasskeySignIn = async () => {
+        setError("");
+        setErrorDetail("");
+        setIsLoading(true);
+        const { error: passkeyError } = await signIn.passkey();
+        if (passkeyError) {
+            // The headline stays neutral — a dismissed prompt and an unknown
+            // passkey arrive the same way — with the plugin's own reason under it.
+            setError(t("passkeyFailed"));
+            setErrorDetail(passkeyError.message ?? "");
+            setIsLoading(false);
+            return;
+        }
+        router.push("/");
+        router.refresh();
+        onClose();
+    };
+
     const handleCredentialsSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        setErrorDetail("");
         setIsLoading(true);
 
         try {
@@ -76,6 +98,15 @@ export default function SignInModal({ isOpen, onClose }: SignInModalProps) {
                     {isLoading ? t("signingIn") : t("continueWithDiscord")}
                 </button>
 
+                <button
+                    onClick={handlePasskeySignIn}
+                    disabled={isLoading}
+                    className="btn-secondary mb-6 flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    <KeyRound className="h-5 w-5" aria-hidden="true" />
+                    {t("continueWithPasskey")}
+                </button>
+
                 <div className="relative mb-6">
                     <div className="absolute inset-0 flex items-center">
                         <span className="w-full border-t border-border"></span>
@@ -115,6 +146,7 @@ export default function SignInModal({ isOpen, onClose }: SignInModalProps) {
                     {error && (
                         <div className="rounded-md border border-error/30 bg-error/10 px-3 py-2">
                             <p className="text-sm text-error">{error}</p>
+                            {errorDetail && <p className="mt-1 text-xs text-error/80">{errorDetail}</p>}
                         </div>
                     )}
 

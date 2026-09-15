@@ -1,14 +1,14 @@
 "use client";
 
 import { saveUserLocale } from "@/app/actions";
-import { Link } from "@/lib/navigation";
+import { Link, useRouter } from "@/lib/navigation";
+import { writeLocaleCookie } from "@/lib/locale-cookie";
 import { signOut } from "@/lib/auth-client";
 import { useLocale, useTranslations } from "next-intl";
 import {
 	ChevronDown,
 	Code2,
 	Languages,
-	LayoutList,
 	LogOut,
 	Monitor,
 	Moon,
@@ -32,6 +32,7 @@ export default function UserDropdown({ user }: UserDropdownProps) {
 	const [mounted, setMounted] = useState(false);
 	const t = useTranslations("settings");
 	const locale = useLocale();
+	const router = useRouter();
 
 	useEffect(() => {
 		setMounted(true);
@@ -57,10 +58,8 @@ export default function UserDropdown({ user }: UserDropdownProps) {
 	const handleLocaleSwitch = async (newLocale: "en" | "zh-HK") => {
 		if (newLocale === locale) return;
 		saveUserLocale(newLocale).catch(console.error);
-		// Strip the current locale prefix from the path, then navigate
-		const currentPath = window.location.pathname;
-		const stripped = currentPath.replace(/^\/(en|zh-HK)/, "") || "/";
-		window.location.href = `/${newLocale}${stripped}`;
+		writeLocaleCookie(newLocale);
+		router.refresh();
 	};
 
 	const getThemeIcon = () => {
@@ -110,15 +109,6 @@ export default function UserDropdown({ user }: UserDropdownProps) {
 					</div>
 
 					<div className="user-menu-body">
-						<Link
-							href="/student-card"
-							className="user-menu-item"
-							role="menuitem"
-							onClick={() => setIsOpen(false)}
-						>
-							<LayoutList className="w-4 h-4" aria-hidden="true" />
-							<span>{t("studentCard")}</span>
-						</Link>
 						<Link
 							href="/settings"
 							className="user-menu-item"

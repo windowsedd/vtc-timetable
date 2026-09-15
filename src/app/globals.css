@@ -81,6 +81,10 @@
 	--calendar-time-bg: oklch(0.965 0.012 200);
 	--calendar-offrange: oklch(0.955 0.012 200);
 	--grid-line: oklch(0.24 0.03 220 / 0.07);
+	/* Weekend cells hover to the grey a session card is filled with
+	   (`bg-secondary/70`), flattened onto the card ground so it stays opaque
+	   over grid lines. Derived, so it follows whichever theme is active. */
+	--calendar-weekend-hover: color-mix(in srgb, var(--secondary) 70%, var(--card));
 
 	/* ── Radius scale (reference: --radius 1.25rem) ── */
 	--radius: 1.25rem;
@@ -938,6 +942,16 @@ body {
 .rbc-today {
 	background: color-mix(in srgb, var(--calendar-today) 7%, transparent) !important;
 }
+/* Weekend cells keep their resting fill and only pick the tint up on hover.
+   `!important` is here to clear `.rbc-today`, which sets its own background
+   the same way, so hovering today's column still reads as a hover. */
+.calendar-weekend {
+	transition: background-color 0.15s ease;
+}
+.calendar-weekend:hover {
+	background-color: var(--calendar-weekend-hover) !important;
+}
+
 /* Dim off-range (previous/next month) days */
 .rbc-off-range-bg {
 	background-color: var(--calendar-offrange) !important;
@@ -1453,8 +1467,29 @@ body {
 	box-shadow: var(--shadow-md);
 }
 .settings-section-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
 	padding: 20px 24px;
-	border-bottom: 1px solid var(--border-subtle);
+	border-bottom: 1px solid var(--border-default);
+}
+
+/* Reference section headers lead with a rounded tile holding the section icon. */
+.settings-section-icon {
+	display: flex;
+	flex: none;
+	width: 40px;
+	height: 40px;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius-2xl);
+	background: var(--secondary);
+	color: var(--secondary-foreground);
+}
+
+.settings-section-icon svg {
+	width: 20px;
+	height: 20px;
 }
 .settings-section-header h2 {
 	font-family: var(--font-display);
@@ -1471,12 +1506,20 @@ body {
 .settings-section-body {
 	padding: 24px;
 }
+
+/* A body that is nothing but rows sits flush under the divider, so the rows
+   carry the rhythm on their own as they do in the reference. */
+.settings-section-body:not(:has(> :not(.settings-row))) {
+	padding: 0 24px;
+}
 .settings-row {
 	display: flex;
+	min-height: 64px;
 	align-items: center;
 	justify-content: space-between;
+	gap: 16px;
 	padding: 12px 0;
-	border-bottom: 1px solid var(--border-subtle);
+	border-bottom: 1px solid var(--border-default);
 	font-size: 14px;
 }
 .settings-row:last-child {
@@ -1490,6 +1533,7 @@ body {
 	font-weight: 500;
 	color: var(--foreground);
 }
+/* Shared sticky bar for /api and /student-card. */
 .settings-page-header {
 	position: sticky;
 	top: 0;
@@ -1505,46 +1549,96 @@ body {
 }
 .settings-page-logo { width: 40px; height: 40px; padding: 6px; border-radius: var(--radius-md); background: var(--accent); }
 .settings-page-subtitle { color: var(--text-tertiary); font-size: 10px; }
+
+/* The settings route's own header: back arrow beside the title, per the reference. */
+.settings-heading {
+	display: flex;
+	max-width: 1152px;
+	margin: 0 auto;
+	align-items: center;
+	gap: 12px;
+	padding: 36px 32px 0;
+}
+
+.settings-heading h1 {
+	font-family: var(--font-display);
+	font-size: 24px;
+	font-weight: 900;
+	letter-spacing: -0.02em;
+}
+
+.settings-heading-eyebrow { color: var(--muted-foreground); font-size: 12px; font-weight: 500; }
+
+.settings-back {
+	display: flex;
+	flex: none;
+	width: 40px;
+	height: 40px;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-2xl);
+	background: var(--card);
+	color: var(--muted-foreground);
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.settings-back:hover {
+	background: var(--highlight);
+	color: var(--foreground);
+}
+
+/* The heading already carries the top gutter. */
+.settings-heading + .settings-layout { padding-top: 24px; }
 .vtc-api-playground,
 .vtc-api-playground > * {
 	min-height: calc(100vh - 66px);
 }
 .settings-layout {
 	display: grid;
-	grid-template-columns: 250px minmax(0, 720px);
-	gap: 34px;
+	grid-template-columns: 190px minmax(0, 1fr);
+	gap: 20px;
 	max-width: 1152px;
 	margin: 0 auto;
-	padding: 36px 28px 60px;
+	padding: 36px 32px 60px;
 }
 .settings-nav {
 	position: sticky;
-	top: 102px;
+	/* Offset inside .settings-shell, which is now the scroll container. */
+	top: 24px;
 	align-self: start;
 	display: grid;
 	gap: 5px;
 }
+.settings-nav-label {
+	margin-bottom: 12px;
+	color: var(--muted-foreground);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
 .settings-nav a {
 	display: block;
-	padding: 12px 14px;
-	border: 1px solid transparent;
-	border-radius: var(--radius-md);
-	transition: background 0.15s ease, border-color 0.15s ease;
+	padding: 8px 12px;
+	border-radius: var(--radius-lg);
+	color: var(--muted-foreground);
+	font-size: 14px;
+	transition: background 0.15s ease, color 0.15s ease;
 }
-.settings-nav a:hover { border-color: var(--border-default); background: var(--bg-subtle); }
-.settings-nav strong,
-.settings-nav span { display: block; }
-.settings-nav strong { font-size: 12px; }
-.settings-nav span { margin-top: 2px; color: var(--text-tertiary); font-size: 10px; line-height: 1.35; }
-.settings-content { min-width: 0; }
-.settings-subsection-heading {
-	margin: 4px -20px 0;
-	padding: 18px 20px 10px;
-	border-top: 1px solid var(--border-subtle);
-}
-.settings-subsection-heading h3 { font-size: 13px; font-weight: 700; }
-.settings-subsection-heading p { margin-top: 3px; color: var(--text-tertiary); font-size: 11px; }
 
+.settings-nav a:hover {
+	background: var(--card);
+	color: var(--foreground);
+}
+.settings-slider { padding: 4px 0 8px; }
+.settings-slider-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.settings-slider-head span { color: var(--muted-foreground); font-size: 14px; }
+.settings-slider-head strong { color: var(--primary); font-family: var(--font-mono); font-size: 20px; font-weight: 700; }
+.settings-slider-scale { display: flex; justify-content: space-between; margin-top: 8px; color: var(--muted-foreground); font-size: 12px; }
+
+.settings-content { min-width: 0; }
 /* ============================================
    HKIIT / VTC student card replica
    Plastic ID stays light in both app themes.
@@ -1597,7 +1691,7 @@ body {
 	position: relative;
 	width: 100%;
 	max-width: 560px;
-	aspect-ratio: 85.6 / 54;
+	aspect-ratio: 1017 / 639;
 	overflow: hidden;
 	border-radius: 3.2cqi;
 	background: #e4e4e4;
@@ -1605,21 +1699,19 @@ body {
 	isolation: isolate;
 	font-family: Arial, "Noto Sans HK", "PingFang HK", "Microsoft JhengHei", sans-serif;
 }
-.student-card-shade {
+.student-card-background {
 	position: absolute;
 	inset: 0;
-	z-index: 0;
-	background: #cfcfcf;
-	clip-path: polygon(0 0, 46% 0, 60% 68%, 0 84%);
+	width: 100%;
+	height: 100%;
 	pointer-events: none;
 }
-.student-card-white {
+.student-card-generic-brand {
 	position: absolute;
-	inset: 0;
-	z-index: 1;
-	background: #fff;
-	clip-path: polygon(100% 34%, 100% 100%, 53% 100%, 74% 38%);
-	pointer-events: none;
+	right: 5%;
+	bottom: 10%;
+	font-size: 8cqi;
+	font-weight: 700;
 }
 .student-card-spoiler .student-card {
 	max-width: none;
@@ -2086,89 +2178,19 @@ body {
 		grid-template-columns: 1fr;
 	}
 }
-.student-card-ribbon {
-	position: absolute;
-	inset: 0;
-	z-index: 2;
-	background: #d4e325;
-	clip-path: polygon(71% 0, 100% 0, 100% 50%);
-	color: #fff;
-	pointer-events: none;
-}
-.student-card-ribbon span {
-	position: absolute;
-	top: 4.5%;
-	right: 2.6%;
-	writing-mode: vertical-rl;
-	text-orientation: mixed;
-	font-size: 3.15cqi;
-	font-weight: 700;
-	letter-spacing: 0.18em;
-	word-spacing: 0.85cqi;
-	line-height: 1;
-}
-.student-card-campus {
-	position: absolute;
-	right: 3.4%;
-	bottom: 6.5%;
-	z-index: 3;
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	width: 24%;
-	text-align: right;
-}
-.student-card-mark {
-	display: block;
-	width: 13.5cqi;
-	height: auto;
-	margin-bottom: 1.4cqi;
-	object-fit: contain;
-}
-.student-card-mark-vtc {
-	width: 14cqi;
-}
-.student-card-wordmark {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	gap: 0.15cqi;
-}
-.student-card-wordmark-en {
-	color: #1a1a1a;
-	font-size: 3.5cqi;
-	font-weight: 800;
-	letter-spacing: 0.04em;
-	line-height: 1;
-}
-.student-card-wordmark-sub {
-	color: #6b6b6b;
-	font-size: 1.45cqi;
-	font-weight: 500;
-	letter-spacing: 0.01em;
-	line-height: 1.2;
-	white-space: nowrap;
-}
 .student-card-photo-frame {
 	position: absolute;
-	left: 5.2%;
-	top: 10%;
-	z-index: 3;
-	width: 23.2%;
-	height: 49%;
-	padding: 0.7cqi;
+	left: 6.3%;
+	top: 8%;
+	width: 27%;
+	height: 44%;
 	overflow: hidden;
-	background: #fff;
+	background: white;
 }
 .student-card-photo-frame img {
 	display: block;
 	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	object-position: center top;
-}
-.student-card-photo-empty {
-	background: #d8d8d8;
+	height: auto;
 }
 .student-card-spoiler-tag {
 	position: absolute;
@@ -2183,83 +2205,135 @@ body {
 	text-transform: uppercase;
 	pointer-events: none;
 }
-.student-card-identity {
+.student-card-name-en,
+.student-card-name-zh,
+.student-card-programme {
 	position: absolute;
-	left: 32.5%;
-	top: 9.5%;
-	right: 26%;
-	z-index: 3;
+	left: 34.7%;
+	width: 44.3%;
+	margin: 0;
+	color: #111;
+	overflow: hidden;
+	overflow-wrap: anywhere;
 }
 .student-card-name-en {
-	margin: 0;
-	color: #222;
-	font-size: 4.05cqi;
-	font-weight: 700;
-	letter-spacing: 0.01em;
-	line-height: 1.15;
+	top: 6.5%;
+	font-size: 4.39cqi;
+	font-weight: 400;
+	line-height: 1.08;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
 }
 .student-card-name-zh {
-	margin: 0.7cqi 0 0;
-	color: #2a2a2a;
-	font-size: 3.7cqi;
-	font-weight: 650;
+	bottom: 70%;
+	font-size: 4.09cqi;
+	font-weight: 400;
 	line-height: 1.2;
+	white-space: nowrap;
 }
 .student-card-programme {
-	margin: 2.8cqi 0 0;
-	max-width: 28cqi;
-	color: #4f4f4f;
-	font-size: 2.55cqi;
-	font-weight: 500;
-	line-height: 1.28;
+	top: 33.5%;
+	font-size: 2.88cqi;
+	font-weight: 400;
+	line-height: 1.35;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 5;
 }
 .student-card-valid {
 	position: absolute;
-	left: 5.2%;
-	bottom: 26%;
-	z-index: 3;
+	left: 6.3%;
+	bottom: 33%;
 	display: flex;
 	align-items: baseline;
-	gap: 1.6cqi;
+	gap: 1cqi;
 	margin: 0;
 	white-space: nowrap;
 }
 .student-card-valid span {
-	color: #9a9a9a;
-	font-size: 2.15cqi;
-	font-weight: 500;
+	color: #fff;
+	font-size: 2.09cqi;
 }
 .student-card-valid strong {
-	color: #3a3a3a;
-	font-size: 2.45cqi;
-	font-weight: 600;
+	color: #111;
+	font-size: 2.73cqi;
+	font-weight: 400;
 }
 .student-card-barcode {
 	position: absolute;
-	left: 5.2%;
+	left: 3%;
 	bottom: 6%;
-	z-index: 3;
-	width: 56%;
-	padding: 0.7cqi 1cqi 0.9cqi;
+	width: 61%;
+	height: 26%;
+	display: flex;
+	flex-direction: column;
 	background: #fff;
 }
 .student-card-barcode-svg {
 	display: block;
 	width: 100%;
-	height: 8.4cqi;
+	flex: 1;
+	min-height: 0;
+	padding: 0.8cqi 0;
 	background: #fff;
+	shape-rendering: crispEdges;
 }
-.student-card-barcode-svg rect {
-	fill: #111111;
-}
+.student-card-barcode-svg rect { fill: #111; }
 .student-card-barcode p {
-	margin: 0 0 0.45cqi;
-	color: #2a2a2a;
-	font-size: 1.85cqi;
-	font-weight: 600;
-	letter-spacing: 0.04em;
-	word-spacing: 0.55cqi;
+	display: flex;
+	justify-content: space-between;
+	gap: 1cqi;
+	margin: 0;
+	padding: 0.2cqi 3.33cqi;
+	color: #111;
+	font-size: 2.73cqi;
+	line-height: 1.15;
+	white-space: nowrap;
 	font-variant-numeric: tabular-nums;
+}
+.student-card-barcode-error {
+	color: #111;
+	font-size: 2.7cqi;
+	text-align: center;
+}
+/* THEi uses a separate layout in the APK, with white type and the photo at right. */
+.student-card--thei .student-card-photo-frame {
+	left: 66.4%;
+	top: 34.5%;
+	width: 23.6%;
+	height: 47%;
+}
+.student-card--thei .student-card-name-en,
+.student-card--thei .student-card-name-zh,
+.student-card--thei .student-card-programme {
+	left: 5.7%;
+	width: 57%;
+	color: #fff;
+}
+.student-card--thei .student-card-name-en {
+	top: 7%;
+	font-size: 4.48cqi;
+	font-weight: 500;
+	-webkit-line-clamp: 1;
+}
+.student-card--thei .student-card-name-zh { bottom: 76.5%; font-size: 4.64cqi; }
+.student-card--thei .student-card-programme {
+	top: 28%;
+	font-size: 3.67cqi;
+	line-height: 1.3;
+	-webkit-line-clamp: 4;
+}
+.student-card-number {
+	position: absolute;
+	left: 5.7%;
+	top: 65%;
+	width: 32%;
+	line-height: 1.2;
+	overflow-wrap: anywhere;
+	margin: 0;
+	color: #fff;
+	font-size: 3.67cqi;
 }
 
 /* ============================================
@@ -2498,14 +2572,14 @@ body {
 		display: block;
 	}
 }
-/* Brand mark sits on a teal tile, matching the reference's sidebar logo. */
+/* Brand mark. No padding or background: the SVG carries its own rounded badge,
+   and an accent plate behind it just reads as a ring. Matches
+   `.sidebar-brand img`. */
 .top-navbar-logo {
 	width: 44px;
 	height: 44px;
 	flex-shrink: 0;
-	padding: 6px;
 	border-radius: var(--radius-2xl);
-	background: var(--accent);
 }
 .top-navbar-title,
 .top-navbar-subtitle {
@@ -2952,6 +3026,18 @@ body {
 .shared-calendar-event strong { font-size: 13px; }
 .shared-calendar-event span { margin-top: 3px; color: var(--text-secondary); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shared-calendar-event small { color: var(--text-tertiary); font-size: 10px; text-align: right; }
+/* Lecture / tutorial / practical, tinted with the course's own line color. */
+.shared-calendar-event-type {
+	display: inline-block;
+	margin-top: 4px;
+	padding: 1px 7px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--share-line) 20%, transparent);
+	color: var(--text-secondary);
+	font-size: 10px;
+	font-style: normal;
+	font-weight: 700;
+}
 .shared-calendar-month-grid {
 	display: grid;
 	grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -2981,6 +3067,7 @@ body {
 }
 .shared-calendar-event.is-compact time { display: block; margin-bottom: 2px; font-size: 8px; }
 .shared-calendar-event.is-compact strong { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.shared-calendar-event.is-compact .shared-calendar-event-type { margin-top: 3px; padding: 0 5px; font-size: 8px; }
 .shared-calendar-event.is-compact small { display: block; margin-top: 2px; overflow: hidden; font-size: 8px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .shared-calendar-month-day > small { display: block; margin-top: 5px; color: var(--text-tertiary); font-size: 9px; }
 .shared-calendar-empty { padding: clamp(48px, 9vw, 96px) 24px; text-align: center; }
@@ -3302,10 +3389,23 @@ body {
 /* ── Course grid ───────────────────────────── */
 .attendance-section-heading {
 	display: flex;
+	width: 100%;
 	align-items: center;
-	justify-content: space-between;
 	gap: 12px;
 	margin-bottom: 16px;
+	text-align: left;
+}
+
+.attendance-section-chevron {
+	flex: none;
+	width: 18px;
+	height: 18px;
+	color: var(--text-tertiary);
+	transition: transform 0.15s ease;
+}
+
+.attendance-section-heading[aria-expanded="false"] .attendance-section-chevron {
+	transform: rotate(-90deg);
 }
 
 .attendance-section-heading h2 {
@@ -3317,6 +3417,7 @@ body {
 
 .attendance-section-heading > span {
 	flex: none;
+	margin-left: auto;
 	padding: 4px 12px;
 	border-radius: 999px;
 	background: var(--secondary);
@@ -3324,6 +3425,8 @@ body {
 	font-size: 12px;
 	font-weight: 600;
 }
+
+.attendance-card-grid[hidden] { display: none; }
 
 .attendance-card-grid {
 	display: grid;
@@ -3538,12 +3641,18 @@ body {
 .sidebar-heading {
 	padding: 20px 20px 0;
 }
-/* Persistent pill navigation, adapted from the reference sidebar. */
+/* Persistent pill navigation, adapted from the reference sidebar. The rail is
+   clipped, so on a short window the links scroll here rather than pushing the
+   sync button out of sight. */
 .sidebar-nav {
 	display: flex;
+	flex: 1;
+	min-height: 0;
 	flex-direction: column;
 	gap: 6px;
 	padding: 24px 20px 8px;
+	overflow-y: auto;
+	overscroll-behavior: contain;
 }
 
 .sidebar-nav-link {
@@ -3650,6 +3759,19 @@ body {
 	padding: 24px 16px;
 	box-sizing: border-box;
 }
+
+/* Flex and grid items default to `min-width: auto`, which floors them at their
+   min-content width. A `truncate` box holds nowrap text, so its min-content is
+   the whole untruncated string: on /tools a 408px feed URL floored the card at
+   484px inside a 450px viewport, and `.dashboard-main` clipped the difference
+   with `overflow-x: hidden` — the right edge of the page simply went missing.
+   `min-w-0` on the card itself does the same for that grid item. Content that
+   genuinely needs its width scrolls on its own (`.campus-month-scroll`), which
+   sits deeper and is unaffected. */
+.calendar-workspace-content,
+.calendar-workspace-content > * {
+	min-width: 0;
+}
 @media (min-width: 640px) {
 	.calendar-workspace-content { padding: 24px 24px; }
 }
@@ -3688,7 +3810,6 @@ body {
 	justify-self: end;
 	gap: 9px;
 }
-.calendar-mobile-dates { display: none; }
 .calendar-title {
 	font-size: 18px;
 	font-weight: 650;
@@ -3743,102 +3864,6 @@ body {
 	width: 1rem;
 	height: 1rem;
 	flex-shrink: 0;
-}
-
-.upcoming-classes {
-	margin-bottom: 20px;
-	border: 1px solid var(--border-default);
-	border-radius: var(--radius-card);
-	padding: 20px;
-	background: var(--bg-surface);
-}
-
-@media (min-width: 640px) {
-	.upcoming-classes { padding: 24px; }
-}
-.upcoming-classes.is-empty {
-	display: flex;
-	min-height: 56px;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	border-style: dashed;
-	color: var(--text-tertiary);
-	font-size: 13px;
-}
-.upcoming-classes.is-empty strong { color: var(--text-secondary); font-size: 14px; font-weight: 700; }
-.upcoming-classes.is-empty small { color: var(--text-tertiary); font-size: 12px; }
-.upcoming-classes-heading {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	margin-bottom: 20px;
-}
-.upcoming-classes-heading h2 {
-	color: var(--foreground);
-	font-family: var(--font-display);
-	font-size: 18px;
-	font-weight: 900;
-	letter-spacing: -0.02em;
-}
-.upcoming-classes-heading span {
-	flex: none;
-	border-radius: var(--radius-pill);
-	padding: 6px 12px;
-	background: var(--secondary);
-	color: var(--text-secondary);
-	font-size: 12px;
-	font-weight: 500;
-}
-.upcoming-classes-list {
-	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 10px;
-}
-
-@media (min-width: 640px) {
-	.upcoming-classes-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-.upcoming-class-chip {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	min-width: 0;
-	padding: 12px;
-	border: 1px solid var(--border-default);
-	border-radius: var(--radius-3xl);
-	background: var(--background);
-	text-align: left;
-	transition: box-shadow 0.15s ease;
-}
-.upcoming-class-chip:hover {
-	box-shadow: var(--shadow-md);
-}
-.upcoming-class-chip time {
-	flex-shrink: 0;
-	color: var(--accent);
-	font-family: var(--font-mono);
-	font-size: 11px;
-	font-weight: 700;
-	white-space: nowrap;
-}
-.upcoming-class-chip strong {
-	min-width: 0;
-	overflow: hidden;
-	color: var(--foreground);
-	font-size: 12px;
-	font-weight: 700;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.upcoming-class-chip span {
-	margin-left: auto;
-	overflow: hidden;
-	color: var(--text-tertiary);
-	font-size: 11px;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 .mobile-attendance-view { display: none; }
 .top-navbar-hamburger {
@@ -3964,32 +3989,47 @@ body {
 @media (max-width: 768px) {
 	.settings-page-header-inner { height: 60px; padding: 0 14px; }
 	.settings-page-logo { width: 34px; height: 34px; }
-	.settings-layout {
+	/* Same 14px gutter as the strip and the cards below it. */
+	.settings-heading { padding: 22px 14px 16px; }
+	.settings-heading h1 { font-size: 20px; }
+	.settings-layout,
+	.settings-heading + .settings-layout {
 		display: block;
+		/* The sticky pill strip is the first thing in here, so it has to start
+		   flush under the heading; the desktop 24px top gutter left it floating. */
 		padding: 0 14px 36px;
 	}
 	.settings-nav {
 		position: sticky;
-		top: 60px;
+		/* Pins to the top of `.settings-shell`, which is the scroll container.
+		   The old 60px offset assumed a sticky page header above it and left
+		   the strip hovering over the first card. */
+		top: 0;
 		z-index: 25;
 		display: flex;
 		gap: 6px;
 		margin: 0 -14px 18px;
 		padding: 9px 14px;
 		overflow-x: auto;
+		/* A scrollbar under seven pills eats most of the strip's height on any
+		   platform that reserves room for one. */
+		scrollbar-width: none;
 		background: color-mix(in srgb, var(--background) 93%, transparent);
 		border-bottom: 1px solid var(--border-default);
 		backdrop-filter: blur(14px);
 	}
+	.settings-nav::-webkit-scrollbar { display: none; }
+	/* The strip is a scrolling row of pills; the "Settings" caption only eats
+	   the width they need. */
+	.settings-nav-label { display: none; }
 	.settings-nav a {
 		flex: 0 0 auto;
 		padding: 8px 11px;
-		border-color: var(--border-default);
+		border: 1px solid var(--border-default);
 		background: var(--bg-subtle);
 	}
-	.settings-nav span { display: none; }
 	.settings-section-body { padding: 16px; }
-	.settings-subsection-heading { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+	.settings-section-body:not(:has(> :not(.settings-row))) { padding: 0 16px; }
 	.settings-row { align-items: flex-start; gap: 12px; }
 	.top-navbar {
 		position: relative;
@@ -3999,7 +4039,6 @@ body {
 	.top-navbar-logo {
 		width: 32px;
 		height: 32px;
-		padding: 5px;
 	}
 	.user-menu-trigger {
 		width: 40px;
@@ -4037,24 +4076,6 @@ body {
 	}
 	.semester-select {
 		min-height: 44px;
-	}
-	.upcoming-classes { margin-bottom: 8px; }
-	.upcoming-classes.is-empty {
-		min-height: 38px;
-		padding: 0 10px;
-	}
-	.upcoming-classes.is-empty small { display: none; }
-	.upcoming-classes-list {
-		display: flex;
-		gap: 8px;
-		overflow-x: auto;
-		scroll-snap-type: x mandatory;
-		padding-bottom: 4px;
-	}
-	.upcoming-class-chip {
-		min-width: min(72vw, 270px);
-		min-height: 44px;
-		scroll-snap-align: start;
 	}
 	.mobile-attendance-view {
 		height: 100%;
@@ -4184,33 +4205,6 @@ body {
 		font-size: 11px !important;
 		text-align: center;
 	}
-	.calendar-mobile-dates {
-		display: grid;
-		grid-template-columns: repeat(5, 1fr);
-		gap: 5px;
-		padding: 7px;
-		border: 1px solid var(--border-default);
-		border-top: 0;
-		border-radius: 0 0 11px 11px;
-		background: var(--bg-subtle);
-	}
-	.calendar-mobile-dates button {
-		display: flex;
-		min-height: 44px;
-		align-items: center;
-		justify-content: center;
-		flex-direction: column;
-		gap: 2px;
-		border-radius: var(--radius-sm);
-		color: var(--text-tertiary);
-	}
-	.calendar-mobile-dates button.is-active {
-		background: color-mix(in srgb, var(--accent-blue) 20%, var(--bg-active));
-		color: var(--foreground);
-	}
-	.calendar-mobile-dates span { font-size: 8px; font-weight: 650; text-transform: uppercase; }
-	.calendar-mobile-dates strong { font-size: 12px; }
-
 	.rbc-event {
 		font-size: 10px !important;
 		padding: 0 !important;
@@ -5219,6 +5213,692 @@ body {
 	background: color-mix(in srgb, var(--accent-fg) 22%, transparent) !important;
 }
 
+/* ============================================
+   CLASS DETAIL SHEET
+   The class as a run on its course's line: two stops, the time between
+   them, and the facts that do not change underneath.
+   ============================================ */
+
+.class-modal {
+	position: relative;
+	overflow: hidden;
+	padding: 30px 26px 24px;
+}
+
+.class-modal-line {
+	position: absolute;
+	inset: 0 0 auto;
+	height: 4px;
+	background: var(--class-line);
+}
+
+.class-modal-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 14px;
+}
+
+.class-modal-header h2 {
+	font-family: var(--font-display);
+	font-size: 20px;
+	font-weight: 900;
+	letter-spacing: -0.02em;
+	line-height: 1.15;
+}
+
+.class-modal-header p {
+	margin-top: 3px;
+	color: var(--text-secondary);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.class-modal-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 12px;
+}
+
+.class-modal-status,
+.class-modal-chip {
+	padding: 3px 10px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+}
+
+.class-modal-status.is-upcoming { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.class-modal-status.is-finished { background: var(--bg-overlay); color: var(--text-secondary); }
+.class-modal-status.is-canceled,
+.class-modal-status.is-absent { background: color-mix(in srgb, var(--error) 15%, transparent); color: var(--error); }
+.class-modal-status.is-rescheduled { background: color-mix(in srgb, var(--accent-blue) 15%, transparent); color: var(--accent-blue); }
+
+.class-modal-chip {
+	border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+	background: color-mix(in srgb, var(--warning) 12%, transparent);
+	color: var(--warning);
+}
+
+.class-modal-run { margin-top: 22px; }
+
+.class-modal-day {
+	color: var(--text-tertiary);
+	font-size: 10px;
+	font-weight: 750;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.class-modal-rail {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-top: 10px;
+}
+
+.class-modal-time {
+	color: var(--foreground);
+	font-family: var(--font-mono);
+	font-size: clamp(17px, 4.6vw, 21px);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+}
+
+/* The run between the two stops. The rule is a background so the duration
+   can sit on top of it with the surface colour behind. */
+.class-modal-track {
+	position: relative;
+	display: grid;
+	flex: 1;
+	min-width: 56px;
+	height: 22px;
+	place-items: center;
+	background: linear-gradient(color-mix(in srgb, var(--class-line) 45%, transparent) 0 0) center / 100% 2px no-repeat;
+}
+
+.class-modal-track::before,
+.class-modal-track::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	width: 9px;
+	height: 9px;
+	margin-top: -4.5px;
+	border-radius: 999px;
+	background: var(--class-line);
+}
+
+.class-modal-track::before { left: 0; }
+.class-modal-track::after { right: 0; }
+
+.class-modal-track em {
+	position: relative;
+	padding: 0 8px;
+	background: var(--bg-surface);
+	color: var(--text-tertiary);
+	font-family: var(--font-mono);
+	font-size: 11px;
+	font-style: normal;
+	font-variant-numeric: tabular-nums;
+}
+
+.class-modal-time-input {
+	min-width: 0;
+	padding: 6px 10px;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-lg);
+	background: var(--background);
+	color: var(--foreground);
+	font-family: var(--font-mono);
+	font-size: 15px;
+	font-variant-numeric: tabular-nums;
+}
+
+.class-modal-facts {
+	display: grid;
+	margin-top: 20px;
+}
+
+.class-modal-facts > div {
+	display: grid;
+	grid-template-columns: 92px minmax(0, 1fr);
+	gap: 14px;
+	align-items: baseline;
+	padding: 11px 0;
+	border-top: 1px solid var(--border-subtle);
+}
+
+.class-modal-facts dt {
+	color: var(--text-tertiary);
+	font-size: 10px;
+	font-weight: 750;
+	letter-spacing: 0.09em;
+	text-transform: uppercase;
+}
+
+.class-modal-facts dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.class-modal-actions {
+	display: grid;
+	gap: 10px;
+	margin-top: 22px;
+}
+
+.class-modal-action-row {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px;
+}
+
+.class-modal-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	padding: 10px 14px;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-lg);
+	background: transparent;
+	color: var(--text-secondary);
+	font: inherit;
+	font-size: 13px;
+	font-weight: 650;
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.class-modal-btn svg { width: 14px; height: 14px; flex: none; }
+.class-modal-btn:hover:not(:disabled) { background: var(--highlight); color: var(--foreground); }
+.class-modal-btn:disabled { opacity: 0.5; cursor: default; }
+.class-modal-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.class-modal-btn.is-primary {
+	border-color: transparent;
+	background: var(--accent);
+	color: var(--accent-fg);
+}
+.class-modal-btn.is-primary:hover:not(:disabled) { background: var(--accent); opacity: 0.92; color: var(--accent-fg); }
+
+.class-modal-btn.is-danger { border-color: color-mix(in srgb, var(--error) 30%, transparent); color: var(--error); }
+.class-modal-btn.is-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--error) 12%, transparent); color: var(--error); }
+
+.class-modal-btn.is-warning { border-color: color-mix(in srgb, var(--warning) 30%, transparent); color: var(--warning); }
+.class-modal-btn.is-warning:hover:not(:disabled) { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); }
+
+.class-modal-btn.is-positive { border-color: color-mix(in srgb, var(--success) 30%, transparent); color: var(--success); }
+.class-modal-btn.is-positive:hover:not(:disabled) { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+
+/* Course-wide action, kept away from the two that touch one class. */
+.class-modal-danger {
+	display: grid;
+	margin-top: 6px;
+	padding-top: 14px;
+	border-top: 1px solid var(--border-subtle);
+}
+
+.class-modal-danger p {
+	margin-top: 8px;
+	color: var(--text-tertiary);
+	font-size: 11px;
+	line-height: 1.5;
+	text-align: center;
+}
+
+@media (max-width: 420px) {
+	.class-modal { padding: 26px 18px 20px; }
+	.class-modal-facts > div { grid-template-columns: 76px minmax(0, 1fr); gap: 10px; }
+}
+
+/* ============================================
+   CLASSES API DOCS (/docs/api)
+   ============================================ */
+
+.api-docs-page {
+	padding: clamp(16px, 4vw, 48px) clamp(12px, 4vw, 32px);
+	background: var(--background);
+}
+.api-docs-shell {
+	width: min(100%, 860px);
+	margin: 0 auto;
+	overflow: hidden;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-card);
+	background: var(--bg-surface);
+	box-shadow: var(--shadow-md);
+}
+.api-docs-header {
+	padding: clamp(22px, 4vw, 36px);
+	border-bottom: 1px solid var(--border-default);
+	background: var(--bg-subtle);
+}
+.api-docs-header > p:first-child {
+	margin: 0 0 6px;
+	color: var(--accent-blue);
+	font-size: 10px;
+	font-weight: 750;
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+.api-docs-header h1 {
+	margin: 0;
+	font-family: var(--font-display);
+	font-size: clamp(24px, 4vw, 32px);
+	font-weight: 900;
+	letter-spacing: -0.03em;
+}
+.api-docs-lede {
+	margin: 8px 0 0;
+	max-width: 60ch;
+	color: var(--text-secondary);
+	font-size: 14px;
+	line-height: 1.6;
+}
+.api-docs-endpoint {
+	display: inline-block;
+	margin-top: 14px;
+	padding: 6px 12px;
+	border: 1px solid var(--border-default);
+	border-radius: 999px;
+	background: var(--bg-surface);
+	font-family: var(--font-mono);
+	font-size: 13px;
+}
+.api-docs-section {
+	padding: clamp(20px, 3.5vw, 30px) clamp(22px, 4vw, 36px);
+	border-bottom: 1px solid var(--border-default);
+}
+.api-docs-section h2 {
+	margin: 0 0 10px;
+	font-family: var(--font-display);
+	font-size: 16px;
+	font-weight: 800;
+	letter-spacing: -0.01em;
+}
+.api-docs-section p {
+	margin: 0;
+	max-width: 68ch;
+	color: var(--text-secondary);
+	font-size: 13px;
+	line-height: 1.65;
+}
+.api-docs-code {
+	margin: 14px 0 0;
+	overflow: hidden;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-sm);
+	background: var(--bg-subtle);
+}
+.api-docs-code figcaption {
+	padding: 7px 12px;
+	border-bottom: 1px solid var(--border-default);
+	color: var(--text-tertiary);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+.api-docs-code pre {
+	margin: 0;
+	overflow-x: auto;
+	padding: 14px;
+}
+.api-docs-code code {
+	color: var(--foreground);
+	font-family: var(--font-mono);
+	font-size: 12px;
+	line-height: 1.65;
+	white-space: pre;
+}
+.api-docs-link {
+	display: inline-block;
+	margin-top: 14px;
+	color: var(--accent-blue);
+	font-size: 13px;
+	font-weight: 700;
+}
+.api-docs-table-scroll { overflow-x: auto; }
+.api-docs-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+.api-docs-table th,
+.api-docs-table td {
+	padding: 9px 12px 9px 0;
+	border-bottom: 1px solid var(--border-subtle);
+	text-align: left;
+	vertical-align: top;
+}
+.api-docs-table th {
+	color: var(--text-tertiary);
+	font-size: 10px;
+	font-weight: 750;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+.api-docs-table td { color: var(--text-secondary); line-height: 1.55; }
+.api-docs-table code {
+	color: var(--foreground);
+	font-family: var(--font-mono);
+	font-size: 12px;
+}
+.api-docs-notes {
+	margin: 14px 0 0;
+	padding-left: 18px;
+	/* Preflight strips list markers; these read as a list, so put them back. */
+	list-style: disc;
+	color: var(--text-secondary);
+	font-size: 13px;
+	line-height: 1.7;
+}
+.api-docs-note {
+	margin-top: 12px !important;
+	color: var(--text-tertiary) !important;
+	font-size: 12px !important;
+}
+.api-docs-steps {
+	margin: 14px 0 0;
+	padding-left: 20px;
+	/* Preflight strips list markers; the step order is the point here. */
+	list-style: decimal;
+	color: var(--text-secondary);
+	font-size: 13px;
+	line-height: 1.7;
+}
+.api-docs-steps li { padding-left: 4px; }
+.api-docs-pick {
+	display: inline-block;
+	margin-left: 8px;
+	padding: 2px 7px;
+	border-radius: 999px;
+	background: var(--accent-soft);
+	color: var(--accent-blue);
+	font-size: 10px;
+	font-weight: 750;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	vertical-align: middle;
+}
+.api-docs-steps li + li { margin-top: 8px; }
+.api-docs-steps::marker,
+.api-docs-steps li::marker {
+	color: var(--text-tertiary);
+	font-weight: 700;
+}
+.api-docs-footer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 18px;
+	padding: 18px clamp(22px, 4vw, 36px);
+	background: var(--bg-subtle);
+}
+.api-docs-footer a {
+	color: var(--accent-blue);
+	font-size: 12px;
+	font-weight: 700;
+}
+
+/* API token row: the secret needs room to wrap without pushing the buttons out. */
+.settings-api-token {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	min-width: 0;
+}
+
+.settings-api-token code {
+	max-width: 100%;
+	overflow-wrap: anywhere;
+	padding: 6px 10px;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-lg);
+	background: var(--bg-subtle);
+	color: var(--foreground);
+	font-family: var(--font-mono);
+	font-size: 12px;
+}
+
+.settings-api-token-link {
+	display: inline-block;
+	margin-top: 6px;
+	color: var(--accent-blue);
+	font-size: 11px;
+	font-weight: 700;
+}
+
+.settings-api-token-hint {
+	margin-top: 4px;
+	color: var(--text-tertiary);
+	font-size: 11px;
+	line-height: 1.5;
+}
+
+/* Registered passkeys: one row per credential, with the add form underneath. */
+.settings-passkey-list {
+	display: grid;
+	gap: 8px;
+	margin: 0 0 16px;
+	padding: 0;
+	list-style: none;
+}
+.settings-passkey-list li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px 14px;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-lg);
+	background: var(--bg-subtle);
+}
+.settings-passkey-name {
+	overflow-wrap: anywhere;
+	color: var(--foreground);
+	font-size: 13px;
+	font-weight: 700;
+}
+.settings-passkey-meta {
+	margin-top: 2px;
+	color: var(--text-tertiary);
+	font-size: 11px;
+}
+.settings-passkey-empty {
+	margin: 0 0 16px;
+	color: var(--text-tertiary);
+	font-size: 13px;
+	line-height: 1.6;
+}
+.settings-passkey-add {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+.settings-passkey-add .input-field { flex: 1; min-width: 200px; }
+.settings-passkey-detail {
+	display: block;
+	margin-top: 4px;
+	opacity: 0.85;
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+
+/* Course picker in the manual attendance-entry sheet. */
+.attendance-modal-course {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--sidebar-border);
+}
+
+.attendance-modal-course label {
+	flex: none;
+	color: var(--text-tertiary);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.attendance-modal-course select {
+	flex: 1;
+	min-width: 0;
+	padding: 7px 10px;
+	border: 1px solid var(--border-default);
+	border-radius: var(--radius-lg);
+	background: var(--bg-surface);
+	color: var(--foreground);
+	font: inherit;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.attendance-modal-course select:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+/* Full-page loader: the app mark under a prism ring, in the logo's own colors. */
+.session-splash {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: min(320px, calc(100vw - 48px));
+	text-align: center;
+}
+
+.session-splash-title {
+	margin-top: 18px;
+	color: var(--foreground);
+	font-family: var(--font-display);
+	font-size: 16px;
+	font-weight: 900;
+	letter-spacing: -0.02em;
+}
+
+.session-splash-status {
+	margin-top: 4px;
+	color: var(--text-secondary);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.session-splash-progress {
+	overflow: hidden;
+	width: 100%;
+	height: 6px;
+	margin-top: 16px;
+	border-radius: 999px;
+	background: var(--border-subtle);
+}
+
+.session-splash-progress span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--accent-blue);
+	transition: width 0.18s ease;
+}
+
+.session-splash-elapsed {
+	margin-top: 8px;
+	color: var(--text-tertiary);
+	font-family: var(--font-mono);
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}
+
+.session-splash-mark {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 124px;
+	height: 124px;
+}
+
+.session-splash-ring {
+	position: absolute;
+	inset: 0;
+	border-radius: 999px;
+	background: conic-gradient(
+		from 0deg,
+		transparent 0deg,
+		#e91e63 70deg,
+		#ff9800 150deg,
+		#2196f3 230deg,
+		#4caf50 310deg,
+		transparent 360deg
+	);
+	-webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+	mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+	animation: session-splash-spin 1.5s linear infinite;
+}
+
+.session-splash-logo {
+	width: 76px;
+	height: 76px;
+	border-radius: 20px;
+	animation: session-splash-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes session-splash-spin {
+	to { transform: rotate(360deg); }
+}
+
+@keyframes session-splash-breathe {
+	0%, 100% {
+		transform: scale(1);
+		filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--foreground) 22%, transparent));
+	}
+	50% {
+		transform: scale(1.06);
+		filter: drop-shadow(0 12px 26px color-mix(in srgb, var(--foreground) 34%, transparent));
+	}
+}
+
+/* The mark alone still reads as "busy"; the motion is decoration. */
+@media (prefers-reduced-motion: reduce) {
+	.session-splash-ring { animation: none; opacity: 0.55; }
+	.session-splash-logo { animation: none; }
+}
+
+/* Time left in the class you are in, or the wait until the next one. */
+.next-class-progress {
+	position: relative;
+	overflow: hidden;
+	height: 6px;
+	margin-top: 4px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--accent-fg) 18%, transparent);
+}
+
+.next-class-progress-fill {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--accent-fg);
+	transition: width 0.6s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.next-class-progress-fill { transition: none; }
+}
+
 .next-class-action {
 	display: inline-flex;
 	align-items: center;
@@ -5526,3 +6206,38 @@ a.moodle-item-row:focus-visible {
 .landing-demo-card.is-clipped {
 	overflow: hidden;
 }
+
+.student-card-qr {
+ max-width: 560px;
+ margin-top: 16px;
+ text-align: center;
+}
+.student-card-page-main .student-card-qr { max-width: none; }
+.student-card-qr-toggle {
+ padding: 10px 16px;
+ border: 1px solid var(--border-default);
+ border-radius: 12px;
+ background: var(--bg-surface);
+ color: var(--foreground);
+ cursor: pointer;
+ font: inherit;
+ font-size: 14px;
+}
+.student-card-qr-toggle:focus-visible { outline: 2px solid var(--foreground); outline-offset: 3px; }
+.student-card-qr-content { padding-top: 16px; }
+.student-card-qr-content img {
+ display: block;
+ width: min(100%, 320px);
+ height: auto;
+ margin: 0 auto;
+ background: white;
+}
+.student-card-qr-content p { margin: 12px 0; color: var(--text-secondary); font-size: 14px; }
+
+/* Keep the campus template visible while personal details are withheld. */
+.student-card-personal-details { cursor: default; }
+.student-card-personal-details .student-card {
+	filter: none;
+	transform: none;
+}
+.student-card-personal-toggle { margin-top: 12px; }

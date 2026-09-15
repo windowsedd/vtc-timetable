@@ -1,8 +1,9 @@
 "use client";
 
 import { getStudentCard } from "@/app/actions/user";
-import { code128Bars } from "@/lib/barcode";
-import type { StudentCardBrand, StudentCardView } from "@/lib/student-card";
+import StudentCardQr from "@/components/StudentCardQr";
+import { code39Bars } from "@/lib/barcode39";
+import { studentCardBackground, type StudentCardView } from "@/lib/student-card";
 import {
 	studentCardLoadingProgress,
 	type StudentCardLoadingStage,
@@ -12,16 +13,16 @@ import { useEffect, useMemo, useState } from "react";
 
 const LOADING_STAGES: StudentCardLoadingStage[] = ["account", "ecard", "details"];
 
-function Code128Barcode({ value }: { value: string }) {
+function LibraryBarcode({ value, unavailableLabel }: { value: string; unavailableLabel: string }) {
 	const graphic = useMemo(() => {
 		try {
-			return code128Bars(value);
+			return code39Bars(value);
 		} catch {
 			return null;
 		}
 	}, [value]);
 
-	if (!graphic) return null;
+	if (!graphic) return <span className="student-card-barcode-error">{unavailableLabel}</span>;
 
 	const quiet = 10;
 	const width = graphic.moduleCount + quiet * 2;
@@ -32,9 +33,9 @@ function Code128Barcode({ value }: { value: string }) {
 			preserveAspectRatio="none"
 			aria-hidden
 		>
-			{graphic.bars.map((bar, index) => (
+			{graphic.bars.map((bar) => (
 				<rect
-					key={`${bar.x}-${index}`}
+					key={bar.x}
 					x={quiet + bar.x}
 					y={0}
 					width={bar.width}
@@ -46,118 +47,72 @@ function Code128Barcode({ value }: { value: string }) {
 	);
 }
 
-function VtcMark() {
-	return (
-		<svg className="student-card-mark student-card-mark-vtc" viewBox="0 0 72 48" aria-hidden>
-			<text x="0" y="36" fill="#1a1a1a" fontSize="32" fontWeight="700" fontFamily="Arial, sans-serif">
-				VTC
-			</text>
-		</svg>
-	);
-}
-
-function CampusLogo({ brand }: { brand: StudentCardBrand }) {
-	if (brand === "hkiit") {
-		return (
-			<div className="student-card-campus">
-				<img
-					className="student-card-mark"
-					src="/campus/hkiit-mark.png"
-					alt=""
-					width={130}
-					height={138}
-				/>
-				<div className="student-card-wordmark">
-					<span className="student-card-wordmark-en">HKIIT</span>
-					<span className="student-card-wordmark-sub">Member of VTC Group</span>
-					<span className="student-card-wordmark-sub">VTC 機構成員</span>
-				</div>
-			</div>
-		);
-	}
-
-	return (
-		<div className="student-card-campus">
-			<VtcMark />
-			<div className="student-card-wordmark">
-				<span className="student-card-wordmark-en">VTC</span>
-				<span className="student-card-wordmark-sub">Vocational Training Council</span>
-				<span className="student-card-wordmark-sub">職業訓練局</span>
-			</div>
-		</div>
-	);
-}
-
 export function StudentCardFace({
 	card,
 	validThroughLabel,
 	photoAlt,
-	spoilerLabel,
 	showCardLabel,
 	hideCardLabel,
+	barcodeUnavailableLabel,
+	studentNumberLabel,
 	conceal = false,
 }: {
 	card: StudentCardView;
 	validThroughLabel: string;
 	photoAlt: string;
-	spoilerLabel: string;
 	showCardLabel: string;
 	hideCardLabel: string;
+	barcodeUnavailableLabel: string;
+	studentNumberLabel: string;
 	conceal?: boolean;
 }) {
 	const [revealed, setRevealed] = useState(false);
+	const background = studentCardBackground(card.brand);
+	const showPersonalDetails = revealed && !conceal;
 
 	useEffect(() => {
 		if (conceal) setRevealed(false);
 	}, [conceal]);
 
 	return (
+		<>
+		<div className="student-card-spoiler student-card-personal-details">
+			<div className={`student-card student-card--${card.brand}`}>
+				{background ? <img className="student-card-background" src={background} alt="" /> : <span className="student-card-generic-brand">VTC</span>}
+				<div className="student-card-photo-frame">
+					{showPersonalDetails && card.photoSrc && <img src={card.photoSrc} alt={photoAlt} />}
+				</div>
+				{showPersonalDetails && <p className="student-card-name-en">{card.englishName}</p>}
+				{showPersonalDetails && card.chineseName && <p className="student-card-name-zh">{card.chineseName}</p>}
+				{card.programme && <p className="student-card-programme">{card.programme}</p>}
+				{card.brand === "thei" ? (
+					<p className="student-card-number">{studentNumberLabel} {card.studentNumber}</p>
+				) : (
+					<>
+						<p className="student-card-valid">
+							<span>{validThroughLabel}</span>
+							<strong>{card.expiryDate}{card.deliveryMode ? ` ${card.deliveryMode}` : ""}</strong>
+						</p>
+						{card.barcodeValue && (
+							<div className="student-card-barcode">
+								<p><span>{card.barcodeCaption}</span><span>{card.programmeCode}</span></p>
+								<LibraryBarcode value={card.barcodeValue} unavailableLabel={barcodeUnavailableLabel} />
+							</div>
+						)}
+					</>
+				)}
+			</div>
+		</div>
 		<button
 			type="button"
-			className={`student-card-spoiler${revealed ? " is-revealed" : ""}`}
+			className="student-card-qr-toggle student-card-personal-toggle"
 			onClick={() => setRevealed((open) => !open)}
-			aria-pressed={revealed}
-			aria-label={revealed ? hideCardLabel : showCardLabel}
+			aria-pressed={showPersonalDetails}
+			disabled={conceal}
 		>
-			<div className="student-card" aria-hidden={!revealed}>
-				<div className="student-card-shade" aria-hidden />
-				<div className="student-card-white" aria-hidden />
-				<div className="student-card-ribbon" aria-hidden>
-					<span>STUDENT CARD</span>
-				</div>
-				<CampusLogo brand={card.brand} />
-				<div className={`student-card-photo-frame${card.photoSrc ? "" : " student-card-photo-empty"}`}>
-					{card.photoSrc ? (
-						<img src={card.photoSrc} alt={revealed ? photoAlt : ""} />
-					) : null}
-				</div>
-				<div className="student-card-identity">
-					<p className="student-card-name-en">{card.englishName}</p>
-					{card.chineseName ? (
-						<p className="student-card-name-zh">{card.chineseName}</p>
-					) : null}
-					{card.programme ? (
-						<p className="student-card-programme">{card.programme}</p>
-					) : null}
-				</div>
-				<p className="student-card-valid">
-					<span>{validThroughLabel}</span>
-					<strong>
-						{card.expiryDate}
-						{card.deliveryMode ? ` ${card.deliveryMode}` : ""}
-					</strong>
-				</p>
-				{card.barcodeValue ? (
-					<div className="student-card-barcode">
-						<p>{card.barcodeCaption}</p>
-						<Code128Barcode value={card.barcodeValue} />
-					</div>
-				) : null}
-			</div>
-			{revealed ? null : (
-				<span className="student-card-spoiler-tag">{spoilerLabel}</span>
-			)}
+			{showPersonalDetails ? hideCardLabel : showCardLabel}
 		</button>
+		</>
 	);
 }
 
@@ -234,11 +189,7 @@ export default function StudentCardPanel({
 
 		return (
 			<div className="student-card-loading" aria-busy="true">
-				<div className="student-card student-card-skeleton" aria-hidden>
-					<div className="student-card-ribbon">
-						<span>STUDENT CARD</span>
-					</div>
-				</div>
+				<div className="student-card student-card-skeleton" aria-hidden />
 				<div className="student-card-loading-details">
 					<div className="student-card-loading-heading" aria-live="polite">
 						<div>
@@ -280,14 +231,18 @@ export default function StudentCardPanel({
 	}
 
 	return (
-		<StudentCardFace
-			card={card}
-			validThroughLabel={t("studentCardValidThrough")}
-			photoAlt={t("studentCardPhotoAlt")}
-			spoilerLabel={t("studentCardSpoiler")}
-			showCardLabel={t("studentCardShow")}
-			hideCardLabel={t("studentCardHide")}
-			conceal={conceal}
-		/>
+		<>
+			<StudentCardFace
+				card={card}
+				validThroughLabel={t("studentCardValidThrough")}
+				photoAlt={t("studentCardPhotoAlt")}
+				showCardLabel={t("studentCardShow")}
+				hideCardLabel={t("studentCardHide")}
+				barcodeUnavailableLabel={t("studentCardBarcodeUnavailable")}
+				studentNumberLabel={t("studentCardNumber")}
+				conceal={conceal}
+			/>
+			{!conceal && <StudentCardQr />}
+		</>
 	);
 }
