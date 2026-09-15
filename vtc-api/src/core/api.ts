@@ -4,7 +4,7 @@ import { getTimeTableAndReminderList } from "../types/getTimeTableAndReminderLis
 import { getMoodleTimetable } from '../types/getMoodleTimetable';
 import { getPrintQuota } from "../types/getPrintQuota";
 import { ecardRegister } from "../types/ecardRegister";
-import { ecard, ecardTokenRefresh } from "../types/ecard";
+import { ecard, ecardTokenRefresh, type EcardTimeResponse } from "../types/ecard";
 import { ecardTnc } from "../types/ecardTnc";
 import { userResponse } from '../types/user';
 import type { MultiLangString, VtcResponse } from "../types/common";
@@ -258,6 +258,12 @@ export class API {
             },
         });
         return readJson<ecard>(response, "ecard");
+    }
+
+    /** Campus clock used when generating the rotating e-card QR. No token required. */
+    async getEcardTime(): Promise<EcardTimeResponse> {
+        const response = await fetch(`${ECARD_API}/time`, { cache: "no-store" });
+        return readJson<EcardTimeResponse>(response, "ecard time");
     }
 
     /**

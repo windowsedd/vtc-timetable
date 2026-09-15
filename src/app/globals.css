@@ -1691,7 +1691,7 @@ body {
 	position: relative;
 	width: 100%;
 	max-width: 560px;
-	aspect-ratio: 85.6 / 54;
+	aspect-ratio: 1017 / 639;
 	overflow: hidden;
 	border-radius: 3.2cqi;
 	background: #e4e4e4;
@@ -1699,21 +1699,19 @@ body {
 	isolation: isolate;
 	font-family: Arial, "Noto Sans HK", "PingFang HK", "Microsoft JhengHei", sans-serif;
 }
-.student-card-shade {
+.student-card-background {
 	position: absolute;
 	inset: 0;
-	z-index: 0;
-	background: #cfcfcf;
-	clip-path: polygon(0 0, 46% 0, 60% 68%, 0 84%);
+	width: 100%;
+	height: 100%;
 	pointer-events: none;
 }
-.student-card-white {
+.student-card-generic-brand {
 	position: absolute;
-	inset: 0;
-	z-index: 1;
-	background: #fff;
-	clip-path: polygon(100% 34%, 100% 100%, 53% 100%, 74% 38%);
-	pointer-events: none;
+	right: 5%;
+	bottom: 10%;
+	font-size: 8cqi;
+	font-weight: 700;
 }
 .student-card-spoiler .student-card {
 	max-width: none;
@@ -2180,89 +2178,19 @@ body {
 		grid-template-columns: 1fr;
 	}
 }
-.student-card-ribbon {
-	position: absolute;
-	inset: 0;
-	z-index: 2;
-	background: #d4e325;
-	clip-path: polygon(71% 0, 100% 0, 100% 50%);
-	color: #fff;
-	pointer-events: none;
-}
-.student-card-ribbon span {
-	position: absolute;
-	top: 4.5%;
-	right: 2.6%;
-	writing-mode: vertical-rl;
-	text-orientation: mixed;
-	font-size: 3.15cqi;
-	font-weight: 700;
-	letter-spacing: 0.18em;
-	word-spacing: 0.85cqi;
-	line-height: 1;
-}
-.student-card-campus {
-	position: absolute;
-	right: 3.4%;
-	bottom: 6.5%;
-	z-index: 3;
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	width: 24%;
-	text-align: right;
-}
-.student-card-mark {
-	display: block;
-	width: 13.5cqi;
-	height: auto;
-	margin-bottom: 1.4cqi;
-	object-fit: contain;
-}
-.student-card-mark-vtc {
-	width: 14cqi;
-}
-.student-card-wordmark {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	gap: 0.15cqi;
-}
-.student-card-wordmark-en {
-	color: #1a1a1a;
-	font-size: 3.5cqi;
-	font-weight: 800;
-	letter-spacing: 0.04em;
-	line-height: 1;
-}
-.student-card-wordmark-sub {
-	color: #6b6b6b;
-	font-size: 1.45cqi;
-	font-weight: 500;
-	letter-spacing: 0.01em;
-	line-height: 1.2;
-	white-space: nowrap;
-}
 .student-card-photo-frame {
 	position: absolute;
-	left: 5.2%;
-	top: 10%;
-	z-index: 3;
-	width: 23.2%;
-	height: 49%;
-	padding: 0.7cqi;
+	left: 6.3%;
+	top: 8%;
+	width: 27%;
+	height: 44%;
 	overflow: hidden;
-	background: #fff;
+	background: white;
 }
 .student-card-photo-frame img {
 	display: block;
 	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	object-position: center top;
-}
-.student-card-photo-empty {
-	background: #d8d8d8;
+	height: auto;
 }
 .student-card-spoiler-tag {
 	position: absolute;
@@ -2277,83 +2205,135 @@ body {
 	text-transform: uppercase;
 	pointer-events: none;
 }
-.student-card-identity {
+.student-card-name-en,
+.student-card-name-zh,
+.student-card-programme {
 	position: absolute;
-	left: 32.5%;
-	top: 9.5%;
-	right: 26%;
-	z-index: 3;
+	left: 34.7%;
+	width: 44.3%;
+	margin: 0;
+	color: #111;
+	overflow: hidden;
+	overflow-wrap: anywhere;
 }
 .student-card-name-en {
-	margin: 0;
-	color: #222;
-	font-size: 4.05cqi;
-	font-weight: 700;
-	letter-spacing: 0.01em;
-	line-height: 1.15;
+	top: 6.5%;
+	font-size: 4.39cqi;
+	font-weight: 400;
+	line-height: 1.08;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
 }
 .student-card-name-zh {
-	margin: 0.7cqi 0 0;
-	color: #2a2a2a;
-	font-size: 3.7cqi;
-	font-weight: 650;
+	bottom: 70%;
+	font-size: 4.09cqi;
+	font-weight: 400;
 	line-height: 1.2;
+	white-space: nowrap;
 }
 .student-card-programme {
-	margin: 2.8cqi 0 0;
-	max-width: 28cqi;
-	color: #4f4f4f;
-	font-size: 2.55cqi;
-	font-weight: 500;
-	line-height: 1.28;
+	top: 33.5%;
+	font-size: 2.88cqi;
+	font-weight: 400;
+	line-height: 1.35;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 5;
 }
 .student-card-valid {
 	position: absolute;
-	left: 5.2%;
-	bottom: 26%;
-	z-index: 3;
+	left: 6.3%;
+	bottom: 33%;
 	display: flex;
 	align-items: baseline;
-	gap: 1.6cqi;
+	gap: 1cqi;
 	margin: 0;
 	white-space: nowrap;
 }
 .student-card-valid span {
-	color: #9a9a9a;
-	font-size: 2.15cqi;
-	font-weight: 500;
+	color: #fff;
+	font-size: 2.09cqi;
 }
 .student-card-valid strong {
-	color: #3a3a3a;
-	font-size: 2.45cqi;
-	font-weight: 600;
+	color: #111;
+	font-size: 2.73cqi;
+	font-weight: 400;
 }
 .student-card-barcode {
 	position: absolute;
-	left: 5.2%;
+	left: 3%;
 	bottom: 6%;
-	z-index: 3;
-	width: 56%;
-	padding: 0.7cqi 1cqi 0.9cqi;
+	width: 61%;
+	height: 26%;
+	display: flex;
+	flex-direction: column;
 	background: #fff;
 }
 .student-card-barcode-svg {
 	display: block;
 	width: 100%;
-	height: 8.4cqi;
+	flex: 1;
+	min-height: 0;
+	padding: 0.8cqi 0;
 	background: #fff;
+	shape-rendering: crispEdges;
 }
-.student-card-barcode-svg rect {
-	fill: #111111;
-}
+.student-card-barcode-svg rect { fill: #111; }
 .student-card-barcode p {
-	margin: 0 0 0.45cqi;
-	color: #2a2a2a;
-	font-size: 1.85cqi;
-	font-weight: 600;
-	letter-spacing: 0.04em;
-	word-spacing: 0.55cqi;
+	display: flex;
+	justify-content: space-between;
+	gap: 1cqi;
+	margin: 0;
+	padding: 0.2cqi 3.33cqi;
+	color: #111;
+	font-size: 2.73cqi;
+	line-height: 1.15;
+	white-space: nowrap;
 	font-variant-numeric: tabular-nums;
+}
+.student-card-barcode-error {
+	color: #111;
+	font-size: 2.7cqi;
+	text-align: center;
+}
+/* THEi uses a separate layout in the APK, with white type and the photo at right. */
+.student-card--thei .student-card-photo-frame {
+	left: 66.4%;
+	top: 34.5%;
+	width: 23.6%;
+	height: 47%;
+}
+.student-card--thei .student-card-name-en,
+.student-card--thei .student-card-name-zh,
+.student-card--thei .student-card-programme {
+	left: 5.7%;
+	width: 57%;
+	color: #fff;
+}
+.student-card--thei .student-card-name-en {
+	top: 7%;
+	font-size: 4.48cqi;
+	font-weight: 500;
+	-webkit-line-clamp: 1;
+}
+.student-card--thei .student-card-name-zh { bottom: 76.5%; font-size: 4.64cqi; }
+.student-card--thei .student-card-programme {
+	top: 28%;
+	font-size: 3.67cqi;
+	line-height: 1.3;
+	-webkit-line-clamp: 4;
+}
+.student-card-number {
+	position: absolute;
+	left: 5.7%;
+	top: 65%;
+	width: 32%;
+	line-height: 1.2;
+	overflow-wrap: anywhere;
+	margin: 0;
+	color: #fff;
+	font-size: 3.67cqi;
 }
 
 /* ============================================
@@ -6226,3 +6206,38 @@ a.moodle-item-row:focus-visible {
 .landing-demo-card.is-clipped {
 	overflow: hidden;
 }
+
+.student-card-qr {
+ max-width: 560px;
+ margin-top: 16px;
+ text-align: center;
+}
+.student-card-page-main .student-card-qr { max-width: none; }
+.student-card-qr-toggle {
+ padding: 10px 16px;
+ border: 1px solid var(--border-default);
+ border-radius: 12px;
+ background: var(--bg-surface);
+ color: var(--foreground);
+ cursor: pointer;
+ font: inherit;
+ font-size: 14px;
+}
+.student-card-qr-toggle:focus-visible { outline: 2px solid var(--foreground); outline-offset: 3px; }
+.student-card-qr-content { padding-top: 16px; }
+.student-card-qr-content img {
+ display: block;
+ width: min(100%, 320px);
+ height: auto;
+ margin: 0 auto;
+ background: white;
+}
+.student-card-qr-content p { margin: 12px 0; color: var(--text-secondary); font-size: 14px; }
+
+/* Keep the campus template visible while personal details are withheld. */
+.student-card-personal-details { cursor: default; }
+.student-card-personal-details .student-card {
+	filter: none;
+	transform: none;
+}
+.student-card-personal-toggle { margin-top: 12px; }

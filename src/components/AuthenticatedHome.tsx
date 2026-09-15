@@ -26,7 +26,6 @@ import MoodleTodoCard from "@/components/MoodleTodoCard";
 import SemesterCalendarCard from "@/components/SemesterCalendarCard";
 import CalendarHeader from "@/components/CalendarHeader";
 import DashboardOverview from "@/components/DashboardOverview";
-import UserDropdown from "@/components/UserDropdown";
 import { jumpMonthForSemester } from "@/lib/semester";
 import { getDateArray, getSemestersToSync } from "@/lib/utils";
 import { stepCalendarDate } from "@/lib/week";
@@ -500,7 +499,6 @@ export default function AuthenticatedHome({ mode = "home" }: AuthenticatedHomePr
             <TopNavbar
                 onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
                 sidebarOpen={sidebarOpen}
-                user={session.user}
             />
 
             {/* Body: Sidebar + Main */}
@@ -530,14 +528,6 @@ export default function AuthenticatedHome({ mode = "home" }: AuthenticatedHomePr
                     weekDate={date}
                     onSelectEvent={(event) => setSelectedEvent(event)}
                     onNavigateToDate={setDate}
-                    headerActions={
-                        <>
-                            {/* Desktop only — phone avatar sits in the top bar. */}
-                            <div className="campus-header-account">
-                                <UserDropdown user={session.user} />
-                            </div>
-                        </>
-                    }
                 />
                 {/* Token Expired Warning Banner */}
                 {showTokenExpiredWarning && (

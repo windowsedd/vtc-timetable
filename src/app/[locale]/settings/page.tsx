@@ -404,7 +404,6 @@ export default function SettingsPage() {
 			<TopNavbar
 				onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
 				sidebarOpen={sidebarOpen}
-				user={session?.user}
 			/>
 
 			<div className="flex-1 flex min-h-0 overflow-clip">

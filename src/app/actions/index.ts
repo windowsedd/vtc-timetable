@@ -69,6 +69,8 @@ export { getMoodleDeadlines } from "./moodle";
 // ── User ─────────────────────────────────────────────
 export { checkStoredToken, getEcard, getPrintQuota, getProgrammeInfo, getStudentCard, registerEcard, saveUserLocale } from "./user";
 export type { EcardCardData } from "./user";
+export { getStudentCardQr } from "./student-card-qr";
+export type { StudentCardQrResult } from "./student-card-qr";
 
 // ── Settings ─────────────────────────────────────────
 export { clearVtcData, getUserSettings, resetGracePeriodThreshold, updateEmailPassword, updateGracePeriodThreshold } from "./settings";

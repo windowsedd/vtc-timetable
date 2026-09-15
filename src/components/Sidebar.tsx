@@ -1,8 +1,10 @@
 ﻿"use client";
 
 import { Link, usePathname } from "@/lib/navigation";
-import { BookOpen, CalendarClock, CalendarCog, CalendarDays, ClipboardCheck, HelpCircle, LayoutGrid, Loader2, RefreshCw, Settings, Table2 } from "lucide-react";
+import { BookOpen, CalendarClock, CalendarCog, CalendarDays, ClipboardCheck, CreditCard, Code2, LogOut, Monitor, HelpCircle, LayoutGrid, Loader2, RefreshCw, Settings, Table2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
+import { signOut } from "@/lib/auth-client";
 
 // Persistent sidebar navigation. lucide-react, one family, size-5 in the rail.
 // `en` doubles as the reference's secondary English label; it is suppressed when
@@ -15,7 +17,10 @@ const NAV_ITEMS = [
 	{ href: "/dashboard#moodle", key: "moodle", en: "Moodle", Icon: BookOpen },
 	{ href: "/events", key: "events", en: "Manage Events", Icon: CalendarCog },
 	{ href: "/tools", key: "tools", en: "Calendar Tools", Icon: CalendarClock },
+	{ href: "/student-card", key: "studentCard", en: "Student card", Icon: CreditCard },
 ] as const;
+
+const API_ITEM = { href: "/api", key: "api", en: "API playground", Icon: Code2 } as const;
 
 const SETTINGS_ITEM = { href: "/settings", key: "settings", en: "Settings", Icon: Settings } as const;
 
@@ -36,6 +41,8 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 	const tTour = useTranslations("tour");
 	const tNav = useTranslations("nav");
 	const pathname = usePathname();
+	const tSettings = useTranslations("settings");
+	const { theme, setTheme } = useTheme();
 
 
 
@@ -86,6 +93,23 @@ export default function Sidebar({ onSyncClick, isSyncing, user, sidebarOpen, onS
 				<div className="sidebar-footer border-t border-[var(--sidebar-border)] space-y-2">
 					{/* Settings sits at the foot of the rail, as in the campus reference. */}
 					{renderNavLink(SETTINGS_ITEM)}
+					{renderNavLink(API_ITEM)}
+					<button type="button" className="sidebar-nav-link" onClick={() => {
+						const themes = ["light", "dark", "system"];
+						setTheme(themes[(themes.indexOf(theme || "system") + 1) % themes.length]);
+					}}>
+						<Monitor aria-hidden="true" />
+						<span className="sidebar-nav-label">{tSettings("theme")}</span>
+					</button>
+					{user && (
+						<button type="button" className="sidebar-nav-link" onClick={async () => {
+							await signOut();
+							window.location.href = "/";
+						}}>
+							<LogOut aria-hidden="true" />
+							<span className="sidebar-nav-label">{tSettings("logout")}</span>
+						</button>
+					)}
 
 					{/* Sync button — only available once signed in */}
 					{user && (

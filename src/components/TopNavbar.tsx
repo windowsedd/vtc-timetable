@@ -1,21 +1,15 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
-import UserDropdown from "./UserDropdown";
 
 interface TopNavbarProps {
 	onSidebarToggle: () => void;
 	sidebarOpen: boolean;
-	/** Signed-in account. On phone the avatar lives here; desktop keeps it in the page header. */
-	user?: {
-		name?: string | null;
-		image?: string | null;
-	} | null;
+
 }
 
-// Compact chrome: drawer toggle + brand on the left. Phone also gets the account
-// menu on the right so it stays out of the stacked greeting row.
-export default function TopNavbar({ onSidebarToggle, sidebarOpen, user }: TopNavbarProps) {
+// Compact chrome: drawer toggle and brand. Account actions live in the sidebar.
+export default function TopNavbar({ onSidebarToggle, sidebarOpen }: TopNavbarProps) {
 	return (
 		<nav className="top-navbar" aria-label="Application navigation">
 			<div className="top-navbar-start">
@@ -33,11 +27,6 @@ export default function TopNavbar({ onSidebarToggle, sidebarOpen, user }: TopNav
 				</div>
 			</div>
 
-			{user ? (
-				<div className="top-navbar-end">
-					<UserDropdown user={user} />
-				</div>
-			) : null}
 		</nav>
 	);
 }
